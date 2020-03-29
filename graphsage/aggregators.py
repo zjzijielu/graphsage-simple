@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 
 import random
+import numpy as np
 
 """
 Set of modules for aggregating embeddings of neighbors.
@@ -12,7 +13,7 @@ class MeanAggregator(nn.Module):
     """
     Aggregates a node's embeddings using mean of neighbors' embeddings
     """
-    def __init__(self, features, cuda=False, gcn=False): 
+    def __init__(self, features, initializer="None", cuda=False, gcn=False): 
         """
         Initializes the aggregator for a specific graph.
 
@@ -26,8 +27,10 @@ class MeanAggregator(nn.Module):
         self.features = features
         self.cuda = cuda
         self.gcn = gcn
+        self.embed = nn.Embedding(2708, 100)
+
         
-    def forward(self, nodes, to_neighs, num_sample=10):
+    def forward(self, nodes, to_neighs, num_sample=10, initializer="None"):
         """
         nodes --- list of nodes in a batch
         to_neighs --- list of sets, each set is the set of neighbors for node in batch
@@ -59,5 +62,13 @@ class MeanAggregator(nn.Module):
             embed_matrix = self.features(torch.LongTensor(unique_nodes_list).cuda())
         else:
             embed_matrix = self.features(torch.LongTensor(unique_nodes_list))
+        # print "embed_matrix has shape", embed_matrix.shape
+        if initializer == "1hot":
+            indices = [np.where(a == 1)[0][0] for a in embed_matrix]
+            indices = torch.LongTensor(indices)
+            embed_matrix = self.embed(indices)
+            # print embed_matrix.shape
+            
         to_feats = mask.mm(embed_matrix)
+        # print "to_feat has shape", to_feats.shape
         return to_feats

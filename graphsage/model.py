@@ -12,6 +12,8 @@ from collections import defaultdict
 from graphsage.encoders import Encoder
 from graphsage.aggregators import MeanAggregator
 
+import argparse
+
 """
 Simple supervised GraphSAGE model as well as examples running the model
 on the Cora and Pubmed datasets.
@@ -36,21 +38,39 @@ class SupervisedGraphSage(nn.Module):
         scores = self.forward(nodes)
         return self.xent(scores, labels.squeeze())
 
-def load_cora():
+
+def load_cora(num_nodes, identity_dim, initializer="None"):
     num_nodes = 2708
-    num_feats = 1433
+    num_feats = identity_dim
+    if initializer == "1hot":
+        num_feats = num_nodes
     feat_data = np.zeros((num_nodes, num_feats))
     labels = np.empty((num_nodes,1), dtype=np.int64)
     node_map = {}
     label_map = {}
-    with open("cora/cora.content") as fp:
-        for i,line in enumerate(fp):
-            info = line.strip().split()
-            feat_data[i,:] = map(float, info[1:-1])
-            node_map[info[0]] = i
-            if not info[-1] in label_map:
-                label_map[info[-1]] = len(label_map)
-            labels[i] = label_map[info[-1]]
+    if initializer == "None":
+        with open("cora/cora.content") as fp:
+            for i,line in enumerate(fp):
+                info = line.strip().split()
+                feat_data[i,:] = map(float, info[1:-1])
+                node_map[info[0]] = i
+                if not info[-1] in label_map:
+                    label_map[info[-1]] = len(label_map)
+                labels[i] = label_map[info[-1]]
+    else:
+        print "Initializing with", initializer
+        with open("cora/cora.content") as fp:
+            for i, line in enumerate(fp):
+                info = line.strip().split()
+                node_map[info[0]] = i
+                if not info[-1] in label_map:
+                    label_map[info[-1]] = len(label_map)
+                labels[i] = label_map[info[-1]]
+        # set initializer method
+        if initializer == "1hot":
+            feat_data = np.eye(num_nodes)
+        elif initializer == "random_normal":
+            feat_data = np.random.normal(0, 1, (num_nodes, identity_dim))
 
     adj_lists = defaultdict(set)
     with open("cora/cora.cites") as fp:
@@ -62,17 +82,20 @@ def load_cora():
             adj_lists[paper2].add(paper1)
     return feat_data, labels, adj_lists
 
-def run_cora():
-    np.random.seed(1)
-    random.seed(1)
+def run_cora(initializer, seed, epochs, batch_size=128, feature_dim=100, identity_dim=50):
+    np.random.seed(seed)
+    random.seed(seed)
     num_nodes = 2708
-    feat_data, labels, adj_lists = load_cora()
-    features = nn.Embedding(2708, 1433)
+    feat_data, labels, adj_lists = load_cora(num_nodes, feature_dim, initializer)
+    if initializer == "1hot":
+        feature_dim = num_nodes
+    print "feature dim is", feature_dim
+    features = nn.Embedding(num_nodes, feature_dim)
     features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
    # features.cuda()
 
     agg1 = MeanAggregator(features, cuda=True)
-    enc1 = Encoder(features, 1433, 128, adj_lists, agg1, gcn=True, cuda=False)
+    enc1 = Encoder(features, 100, identity_dim, adj_lists, agg1, gcn=True, cuda=False, initializer=initializer)
     agg2 = MeanAggregator(lambda nodes : enc1(nodes).t(), cuda=False)
     enc2 = Encoder(lambda nodes : enc1(nodes).t(), enc1.embed_dim, 128, adj_lists, agg2,
             base_model=enc1, gcn=True, cuda=False)
@@ -82,27 +105,33 @@ def run_cora():
     graphsage = SupervisedGraphSage(7, enc2)
 #    graphsage.cuda()
     rand_indices = np.random.permutation(num_nodes)
-    test = rand_indices[:1000]
-    val = rand_indices[1000:1500]
-    train = list(rand_indices[1500:])
+    test = rand_indices[:271]
+    val = rand_indices[271:542]
+    train = list(rand_indices[542:])
+    train_num = len(train)
 
     optimizer = torch.optim.SGD(filter(lambda p : p.requires_grad, graphsage.parameters()), lr=0.7)
     times = []
-    for batch in range(100):
-        batch_nodes = train[:256]
+
+    for epoch in range(epochs):
+        print "Epoch:", epoch
         random.shuffle(train)
-        start_time = time.time()
-        optimizer.zero_grad()
-        loss = graphsage.loss(batch_nodes, 
-                Variable(torch.LongTensor(labels[np.array(batch_nodes)])))
-        loss.backward()
-        optimizer.step()
-        end_time = time.time()
-        times.append(end_time-start_time)
-        print batch, loss.data[0]
+        for batch in range(0, train_num, batch_size):
+            batch_nodes = train[batch:max(train_num, batch+batch_size)]
+            start_time = time.time()
+            optimizer.zero_grad()
+            loss = graphsage.loss(batch_nodes, 
+                    Variable(torch.LongTensor(labels[np.array(batch_nodes)])))
+            loss.backward()
+            optimizer.step()
+            end_time = time.time()
+            times.append(end_time-start_time)
+            if (batch == 0):
+                print "Batch", batch, "Loss:", loss.item()
 
     val_output = graphsage.forward(val) 
-    print "Validation F1:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro")
+    print "Validation F1 micro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro")
+    print "Validation F1 macro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="macro")
     print "Average batch time:", np.mean(times)
 
 def load_pubmed():
@@ -144,7 +173,7 @@ def run_pubmed():
    # features.cuda()
 
     agg1 = MeanAggregator(features, cuda=True)
-    enc1 = Encoder(features, 500, 128, adj_lists, agg1, gcn=True, cuda=False)
+    enc1 = Encoder(features, 500, 128, adj_lists, agg1, gcn=True, cuda=False, initializer=initializer)
     agg2 = MeanAggregator(lambda nodes : enc1(nodes).t(), cuda=False)
     enc2 = Encoder(lambda nodes : enc1(nodes).t(), enc1.embed_dim, 128, adj_lists, agg2,
             base_model=enc1, gcn=True, cuda=False)
@@ -177,5 +206,26 @@ def run_pubmed():
     print "Validation F1:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro")
     print "Average batch time:", np.mean(times)
 
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--initializer", type=str, default="None",
+                        help="node feature initialiation method")
+    parser.add_argument("--identity_dim", type=int, default=100,
+                        help="node feature dimension")
+    parser.add_argument("--seed", type=int, default="1",
+                        help="random seed for initialization")
+    parser.add_argument("--epochs", type=int, default="5",
+                        help="random seed for initialization")
+
+    args = parser.parse_args()
+
+    initializer = args.initializer
+    identity_dim = args.identity_dim
+    seed = args.seed
+    epochs = args.epochs
+
+
+    run_cora(initializer, seed, epochs, identity_dim=identity_dim)
+
 if __name__ == "__main__":
-    run_cora()
+    main()

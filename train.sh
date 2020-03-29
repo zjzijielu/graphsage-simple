@@ -1,0 +1,1 @@
+python -m graphsage.model --initializer 1hot --seed 3
