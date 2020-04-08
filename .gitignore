@@ -108,3 +108,4 @@ ENV/
 *.pickle
 *.pkl
 
+*.sh

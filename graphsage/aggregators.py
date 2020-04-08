@@ -63,6 +63,7 @@ class MeanAggregator(nn.Module):
         else:
             embed_matrix = self.features(torch.LongTensor(unique_nodes_list))
         # print "embed_matrix has shape", embed_matrix.shape
+        print embed_matrix
         if initializer == "1hot":
             indices = [np.where(a == 1)[0][0] for a in embed_matrix]
             indices = torch.LongTensor(indices)

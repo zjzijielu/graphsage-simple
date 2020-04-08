@@ -71,6 +71,8 @@ def load_cora(num_nodes, identity_dim, initializer="None"):
             feat_data = np.eye(num_nodes)
         elif initializer == "random_normal":
             feat_data = np.random.normal(0, 1, (num_nodes, identity_dim))
+        elif initializer == "shared":
+            feat_data = np.ones((num_nodes, identity_dim))
 
     adj_lists = defaultdict(set)
     with open("cora/cora.cites") as fp:
@@ -87,6 +89,7 @@ def run_cora(initializer, seed, epochs, batch_size=128, feature_dim=100, identit
     random.seed(seed)
     num_nodes = 2708
     feat_data, labels, adj_lists = load_cora(num_nodes, feature_dim, initializer)
+    print(feat_data)
     if initializer == "1hot":
         feature_dim = num_nodes
     print "feature dim is", feature_dim
