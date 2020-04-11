@@ -8,6 +8,10 @@ docker build -t graphsage-simple .
 ```
 docker run -v "$(pwd):/notebooks" -it graphsage-simple bash
 ```
+### Run node classification
+```
+bash train_nodes.sh
+```
 
 # Reference PyTorch GraphSAGE Implementation
 ### Author: William L. Hamilton
