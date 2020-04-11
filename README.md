@@ -1,3 +1,14 @@
+# Evaluating Node Feature Initialization Methods in Graph Convolutional Networks
+
+### Build Docker image
+```
+docker build -t graphsage-simple .
+```
+### Run Docker container
+```
+docker run -v "$(pwd):/notebooks" -it graphsage-simple bash
+```
+
 # Reference PyTorch GraphSAGE Implementation
 ### Author: William L. Hamilton
 
