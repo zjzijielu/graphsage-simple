@@ -35,7 +35,7 @@ class Encoder(nn.Module):
 
         init.xavier_uniform(self.weight)
 
-        print "feat dim:", self.feat_dim, "embed_dim:", self.embed_dim
+        print("feat dim:", self.feat_dim, "embed_dim:", self.embed_dim)
 
     def forward(self, nodes):
         """
