@@ -13,6 +13,7 @@ from graphsage.encoders import Encoder
 from graphsage.aggregators import MeanAggregator
 
 import argparse
+import networkx as nx
 
 """
 Simple supervised GraphSAGE model as well as examples running the model
@@ -58,7 +59,7 @@ def load_cora(num_nodes, identity_dim, initializer="None"):
                     label_map[info[-1]] = len(label_map)
                 labels[i] = label_map[info[-1]]
     else:
-        print "Initializing with", initializer
+        print("Initializing with", initializer)
         with open("cora/cora.content") as fp:
             for i, line in enumerate(fp):
                 info = line.strip().split()
@@ -75,6 +76,14 @@ def load_cora(num_nodes, identity_dim, initializer="None"):
             feat_data = np.ones((num_nodes, identity_dim))
         elif initializer == "node_degree":
             feat_data = np.zeros((num_nodes, 1))
+        elif initializer == "pagerank":
+            G = nx.Graph()
+            G.add_nodes_from(node_map.values())
+            # print(nx.pagerank(G))
+            feat_data = np.zeros((num_nodes, 1))
+            pagerank = nx.pagerank(G)
+            for k, v in pagerank.items():
+                feat_data[k, 0] = v
 
     adj_lists = defaultdict(set)
     with open("cora/cora.cites") as fp:
@@ -99,7 +108,7 @@ def run_cora(initializer, seed, epochs, batch_size=128, feature_dim=100, identit
     print(feat_data)
     if initializer == "1hot":
         feature_dim = num_nodes
-    print "feature dim is", feature_dim
+    print("feature dim is", feature_dim)
     features = nn.Embedding(num_nodes, feature_dim)
     features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
    # features.cuda()
@@ -124,7 +133,7 @@ def run_cora(initializer, seed, epochs, batch_size=128, feature_dim=100, identit
     times = []
 
     for epoch in range(epochs):
-        print "Epoch:", epoch
+        print("Epoch:", epoch)
         random.shuffle(train)
         for batch in range(0, train_num, batch_size):
             batch_nodes = train[batch:max(train_num, batch+batch_size)]
@@ -137,12 +146,12 @@ def run_cora(initializer, seed, epochs, batch_size=128, feature_dim=100, identit
             end_time = time.time()
             times.append(end_time-start_time)
             if (batch == 0):
-                print "Batch", batch, "Loss:", loss.item()
+                print("Batch", batch, "Loss:", loss.item())
 
     val_output = graphsage.forward(val) 
-    print "Validation F1 micro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro")
-    print "Validation F1 macro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="macro")
-    print "Average batch time:", np.mean(times)
+    print("Validation F1 micro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro"))
+    print("Validation F1 macro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="macro"))
+    print("Average batch time:", np.mean(times))
 
 def load_pubmed():
     #hardcoded for simplicity...
@@ -210,11 +219,11 @@ def run_pubmed():
         optimizer.step()
         end_time = time.time()
         times.append(end_time-start_time)
-        print batch, loss.data[0]
+        print(batch, loss.data[0])
 
     val_output = graphsage.forward(val) 
-    print "Validation F1:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro")
-    print "Average batch time:", np.mean(times)
+    print("Validation F1:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro"))
+    print("Average batch time:", np.mean(times))
 
 def main():
     parser = argparse.ArgumentParser()
