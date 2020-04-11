@@ -1,0 +1,1 @@
+python -m graphsage.model --initializer pagerank --seed 5 --feature_dim 1 --identity_dim 20 --epoch 5
