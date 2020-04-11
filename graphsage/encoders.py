@@ -55,5 +55,8 @@ class Encoder(nn.Module):
         else:
             combined = neigh_feats
         
-        combined = F.relu(self.weight.mm(combined.t()))
+        if self.initializer == "node_degree" or self.initializer == "shared":
+            combined = F.sigmoid(self.weight.mm(combined.t()))
+        else: 
+            combined = F.relu(self.weight.mm(combined.t()))
         return combined

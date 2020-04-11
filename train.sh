@@ -1,1 +1,1 @@
-python -m graphsage.model --initializer shared --seed 5
+python -m graphsage.model --initializer node_degree --seed 5 --feature_dim 1 --identity_dim 20 --epoch 5

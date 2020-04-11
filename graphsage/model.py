@@ -73,6 +73,8 @@ def load_cora(num_nodes, identity_dim, initializer="None"):
             feat_data = np.random.normal(0, 1, (num_nodes, identity_dim))
         elif initializer == "shared":
             feat_data = np.ones((num_nodes, identity_dim))
+        elif initializer == "node_degree":
+            feat_data = np.zeros((num_nodes, 1))
 
     adj_lists = defaultdict(set)
     with open("cora/cora.cites") as fp:
@@ -82,6 +84,11 @@ def load_cora(num_nodes, identity_dim, initializer="None"):
             paper2 = node_map[info[1]]
             adj_lists[paper1].add(paper2)
             adj_lists[paper2].add(paper1)
+
+    if initializer == "node_degree":
+        for k, v in adj_lists.items():
+            feat_data[k, 0] = len(v)
+
     return feat_data, labels, adj_lists
 
 def run_cora(initializer, seed, epochs, batch_size=128, feature_dim=100, identity_dim=50):
@@ -98,7 +105,7 @@ def run_cora(initializer, seed, epochs, batch_size=128, feature_dim=100, identit
    # features.cuda()
 
     agg1 = MeanAggregator(features, cuda=True)
-    enc1 = Encoder(features, 100, identity_dim, adj_lists, agg1, gcn=True, cuda=False, initializer=initializer)
+    enc1 = Encoder(features, feature_dim, identity_dim, adj_lists, agg1, gcn=True, cuda=False, initializer=initializer)
     agg2 = MeanAggregator(lambda nodes : enc1(nodes).t(), cuda=False)
     enc2 = Encoder(lambda nodes : enc1(nodes).t(), enc1.embed_dim, 128, adj_lists, agg2,
             base_model=enc1, gcn=True, cuda=False)
@@ -213,7 +220,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--initializer", type=str, default="None",
                         help="node feature initialiation method")
-    parser.add_argument("--identity_dim", type=int, default=100,
+    parser.add_argument("--identity_dim", type=int, default=50,
+                        help="node embedding dimension")
+    parser.add_argument("--feature_dim", type=int, default=100,
                         help="node feature dimension")
     parser.add_argument("--seed", type=int, default="1",
                         help="random seed for initialization")
@@ -224,11 +233,12 @@ def main():
 
     initializer = args.initializer
     identity_dim = args.identity_dim
+    feature_dim = args.feature_dim
     seed = args.seed
     epochs = args.epochs
 
 
-    run_cora(initializer, seed, epochs, identity_dim=identity_dim)
+    run_cora(initializer, seed, epochs, feature_dim=feature_dim, identity_dim=identity_dim)
 
 if __name__ == "__main__":
     main()
