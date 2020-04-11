@@ -13,6 +13,7 @@ from graphsage.encoders import Encoder
 from graphsage.aggregators import MeanAggregator
 
 import argparse
+import networkx as nx
 
 """
 Simple supervised GraphSAGE model as well as examples running the model
@@ -75,6 +76,14 @@ def load_cora(num_nodes, identity_dim, initializer="None"):
             feat_data = np.ones((num_nodes, identity_dim))
         elif initializer == "node_degree":
             feat_data = np.zeros((num_nodes, 1))
+        elif initializer == "pagerank":
+            G = nx.Graph()
+            G.add_nodes_from(node_map.values())
+            # print(nx.pagerank(G))
+            feat_data = np.zeros((num_nodes, 1))
+            pagerank = nx.pagerank(G)
+            for k, v in pagerank.items():
+                feat_data[k, 0] = v
 
     adj_lists = defaultdict(set)
     with open("cora/cora.cites") as fp:
