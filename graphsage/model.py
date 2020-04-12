@@ -14,6 +14,7 @@ from graphsage.aggregators import MeanAggregator
 
 import argparse
 import networkx as nx
+from numpy import linalg as LA
 
 """
 Simple supervised GraphSAGE model as well as examples running the model
@@ -84,6 +85,9 @@ def load_cora(num_nodes, identity_dim, initializer="None"):
             pagerank = nx.pagerank(G)
             for k, v in pagerank.items():
                 feat_data[k, 0] = v
+        elif initializer == "eigen_decomposition":
+            # TODO: how to determine which eigen vectors to use for each node
+            pass
 
     adj_lists = defaultdict(set)
     with open("cora/cora.cites") as fp:
