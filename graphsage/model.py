@@ -77,14 +77,9 @@ def load_cora(num_nodes, identity_dim, initializer="None"):
             feat_data = np.ones((num_nodes, identity_dim))
         elif initializer == "node_degree":
             feat_data = np.zeros((num_nodes, 1))
-        elif initializer == "pagerank":
+        elif initializer == "pagerank" or initializer == "eigen_decomposition":
             G = nx.Graph()
             G.add_nodes_from(node_map.values())
-            # print(nx.pagerank(G))
-            feat_data = np.zeros((num_nodes, 1))
-            pagerank = nx.pagerank(G)
-            for k, v in pagerank.items():
-                feat_data[k, 0] = v
 
     adj_lists = defaultdict(set)
     with open("cora/cora.cites") as fp:
@@ -94,17 +89,26 @@ def load_cora(num_nodes, identity_dim, initializer="None"):
             paper2 = node_map[info[1]]
             adj_lists[paper1].add(paper2)
             adj_lists[paper2].add(paper1)
+            if initializer == "pagerank" or initializer == "eigen_decomposition":
+                G.add_edge(paper1, paper2)
+                G.add_edge(paper2, paper1)
 
     if initializer == "node_degree":
         for k, v in adj_lists.items():
             feat_data[k, 0] = len(v)
+    elif initializer == "pagerank":
+        feat_data = np.zeros((num_nodes, 1))
+        pagerank = nx.pagerank(G)
+        for k, v in pagerank.items():
+            feat_data[k, 0] = v
     elif initializer == "eigen_decomposition":
-        G = nx.Graph()
-        G.add_nodes_from(node_map.values())
-        adj_matrix = nx.adjacency_matrix(G)
-        print(adj_matrix)
-        exit()
-        
+        adj_matrix = nx.to_numpy_array(G)
+        w, v = LA.eig(adj_matrix)
+        indices = np.argsort(w)
+        feat_data = np.zeros((num_nodes, identity_dim))
+        for i in range(num_nodes):
+            for j in range(identity_dim):
+                feat_data[i, j] = v[i, j]
 
     return feat_data, labels, adj_lists
 
