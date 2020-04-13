@@ -14,6 +14,7 @@ from graphsage.aggregators import MeanAggregator
 
 import argparse
 import networkx as nx
+from numpy import linalg as LA
 
 """
 Simple supervised GraphSAGE model as well as examples running the model
@@ -76,7 +77,7 @@ def load_cora(num_nodes, identity_dim, initializer="None"):
             feat_data = np.ones((num_nodes, identity_dim))
         elif initializer == "node_degree":
             feat_data = np.zeros((num_nodes, 1))
-        elif initializer == "pagerank":
+        elif initializer == "pagerank" or initializer == "eigen_decomposition":
             G = nx.Graph()
             G.add_nodes_from(node_map.values())
 
@@ -88,7 +89,7 @@ def load_cora(num_nodes, identity_dim, initializer="None"):
             paper2 = node_map[info[1]]
             adj_lists[paper1].add(paper2)
             adj_lists[paper2].add(paper1)
-            if initializer == "pagerank":
+            if initializer == "pagerank" or initializer == "eigen_decomposition":
                 G.add_edge(paper1, paper2)
                 G.add_edge(paper2, paper1)
 
@@ -100,6 +101,14 @@ def load_cora(num_nodes, identity_dim, initializer="None"):
         pagerank = nx.pagerank(G)
         for k, v in pagerank.items():
             feat_data[k, 0] = v
+    elif initializer == "eigen_decomposition":
+        adj_matrix = nx.to_numpy_array(G)
+        w, v = LA.eig(adj_matrix)
+        indices = np.argsort(w)
+        feat_data = np.zeros((num_nodes, identity_dim))
+        for i in range(num_nodes):
+            for j in range(identity_dim):
+                feat_data[i, j] = v[i, j]
 
     return feat_data, labels, adj_lists
 

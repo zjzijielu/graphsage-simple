@@ -110,4 +110,8 @@ ENV/
 
 *.sh
 
+<<<<<<< HEAD
+=======
+# deepwalk
+>>>>>>> eigen_decomposition
 deepwalk/
