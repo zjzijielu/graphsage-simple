@@ -79,11 +79,6 @@ def load_cora(num_nodes, identity_dim, initializer="None"):
         elif initializer == "pagerank":
             G = nx.Graph()
             G.add_nodes_from(node_map.values())
-            # print(nx.pagerank(G))
-            feat_data = np.zeros((num_nodes, 1))
-            pagerank = nx.pagerank(G)
-            for k, v in pagerank.items():
-                feat_data[k, 0] = v
 
     adj_lists = defaultdict(set)
     with open("cora/cora.cites") as fp:
@@ -93,10 +88,18 @@ def load_cora(num_nodes, identity_dim, initializer="None"):
             paper2 = node_map[info[1]]
             adj_lists[paper1].add(paper2)
             adj_lists[paper2].add(paper1)
+            if initializer == "pagerank":
+                G.add_edge(paper1, paper2)
+                G.add_edge(paper2, paper1)
 
     if initializer == "node_degree":
         for k, v in adj_lists.items():
             feat_data[k, 0] = len(v)
+    elif initializer == "pagerank":
+        feat_data = np.zeros((num_nodes, 1))
+        pagerank = nx.pagerank(G)
+        for k, v in pagerank.items():
+            feat_data[k, 0] = v
 
     return feat_data, labels, adj_lists
 
