@@ -40,6 +40,18 @@ class SupervisedGraphSage(nn.Module):
         scores = self.forward(nodes)
         return self.xent(scores, labels.squeeze())
 
+def extract_deepwalk_embeddings(filename, node_map):
+    with open(filename) as f:
+        feat_data = []
+        for i, line in enumerate(f):
+            info = line.strip().split()
+            if i == 0:
+                feat_data = np.zeros((int(info[0]), int(info[1])))
+            else:
+                idx = node_map[info[0]]
+                feat_data[idx, :] = list(map(float, info[1::]))
+            
+    return feat_data
 
 def load_cora(num_nodes, identity_dim, initializer="None"):
     num_nodes = 2708
@@ -80,6 +92,8 @@ def load_cora(num_nodes, identity_dim, initializer="None"):
         elif initializer == "pagerank" or initializer == "eigen_decomposition":
             G = nx.Graph()
             G.add_nodes_from(node_map.values())
+        elif initializer == "deepwalk":
+            feat_data = extract_deepwalk_embeddings("cora/cora.embeddings", node_map)
 
     adj_lists = defaultdict(set)
     with open("cora/cora.cites") as fp:

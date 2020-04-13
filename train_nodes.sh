@@ -1,1 +1,1 @@
-python -m graphsage.model --initializer eigen_decomposition --seed 5 --feature_dim 20 --identity_dim 20 --epoch 5
+python -m graphsage.model --initializer deepwalk --seed 5 --feature_dim 64 --identity_dim 50 --epoch 5
