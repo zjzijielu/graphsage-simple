@@ -85,9 +85,6 @@ def load_cora(num_nodes, identity_dim, initializer="None"):
             pagerank = nx.pagerank(G)
             for k, v in pagerank.items():
                 feat_data[k, 0] = v
-        elif initializer == "eigen_decomposition":
-            # TODO: how to determine which eigen vectors to use for each node
-            pass
 
     adj_lists = defaultdict(set)
     with open("cora/cora.cites") as fp:
@@ -101,6 +98,13 @@ def load_cora(num_nodes, identity_dim, initializer="None"):
     if initializer == "node_degree":
         for k, v in adj_lists.items():
             feat_data[k, 0] = len(v)
+    elif initializer == "eigen_decomposition":
+        G = nx.Graph()
+        G.add_nodes_from(node_map.values())
+        adj_matrix = nx.adjacency_matrix(G)
+        print(adj_matrix)
+        exit()
+        
 
     return feat_data, labels, adj_lists
 

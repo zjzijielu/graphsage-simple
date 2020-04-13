@@ -1,1 +1,1 @@
-python -m graphsage.model --initializer pagerank --seed 5 --feature_dim 1 --identity_dim 20 --epoch 5
+python -m graphsage.model --initializer eigen_decomposition --seed 5 --feature_dim 10 --identity_dim 20 --epoch 5
