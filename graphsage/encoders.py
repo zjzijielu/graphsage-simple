@@ -55,7 +55,7 @@ class Encoder(nn.Module):
         else:
             combined = neigh_feats
         
-        if self.initializer in ["node_degree", "shared", "pagerank"]:
+        if self.initializer in ["node_degree", "shared", "pagerank", "identity"]:
             combined = F.sigmoid(self.weight.mm(combined.t()))
         else: 
             combined = F.relu(self.weight.mm(combined.t()))
