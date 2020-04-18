@@ -55,11 +55,13 @@ def extract_deepwalk_embeddings(filename, node_map):
 
 def load_data(dataset, identity_dim, initializer="None"):
     dataset_map = {"cora": 2708, "pubmed": 19717}
+    num_classes_map = {"cora": 7, "pubmed": 3}
     label_file_path = {"cora": "cora/cora.content", "pubmed": "pubmed-data/Pubmed-Diabetes.NODE.paper.tab"}
     edge_file_path = {"cora": "cora/cora.cites", "pubmed": "pubmed-data/Pubmed-Diabetes.DIRECTED.cites.tab"}
     deepwalk_embedding_file_path = {"cora": "cora/cora.embeddings"}
 
     num_nodes = dataset_map[dataset]
+    num_classes = num_classes_map[dataset]
     label_file = label_file_path[dataset]
     edge_file = edge_file_path[dataset]
     deepwalk_embedding_file = deepwalk_embedding_file_path[dataset]
@@ -134,13 +136,13 @@ def load_data(dataset, identity_dim, initializer="None"):
             for j in range(identity_dim):
                 feat_data[i, j] = v[i, j]
     
-    return feat_data, labels, adj_lists, num_nodes
+    return feat_data, labels, adj_lists, num_nodes, num_classes
 
 def run_model(dataset, initializer, seed, epochs, batch_size=128, feature_dim=100, identity_dim=50):
     # merge run_cora and run_pubmed
     np.random.seed(seed)
     random.seed(seed)
-    feat_data, labels, adj_lists, num_nodes = load_data(dataset, feature_dim, initializer)
+    feat_data, labels, adj_lists, num_nodes, num_classes = load_data(dataset, feature_dim, initializer)
     print(feat_data)
     if initializer == "1hot":
         feature_dim = num_nodes
@@ -157,12 +159,14 @@ def run_model(dataset, initializer, seed, epochs, batch_size=128, feature_dim=10
     enc1.num_samples = 5
     enc2.num_samples = 5
 
-    graphsage = SupervisedGraphSage(7, enc2)
+    graphsage = SupervisedGraphSage(num_classes, enc2)
 #    graphsage.cuda()
     rand_indices = np.random.permutation(num_nodes)
-    test = rand_indices[:271]
-    val = rand_indices[271:542]
-    train = list(rand_indices[542:])
+    test_end_idx = int(0.1 * num_nodes)
+    val_end_idx = int(0.2 * num_nodes)
+    test = rand_indices[:test_end_idx]
+    val = rand_indices[test_end_idx:val_end_idx]
+    train = list(rand_indices[val_end_idx:])
     train_num = len(train)
 
     optimizer = torch.optim.SGD(filter(lambda p : p.requires_grad, graphsage.parameters()), lr=0.7)
