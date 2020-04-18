@@ -1,1 +1,0 @@
-python -m graphsage.model --initializer 1hot --seed 24 --feature_dim 150 --identity_dim 128 --epoch 20
