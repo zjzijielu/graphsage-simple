@@ -1,1 +1,1 @@
-python -m graphsage.model --initializer deepwalk --seed 5 --feature_dim 64 --identity_dim 50 --epoch 5
+python -m graphsage.model --initializer 1hot --seed 24 --feature_dim 150 --identity_dim 128 --epoch 20

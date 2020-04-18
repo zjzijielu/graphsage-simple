@@ -13,7 +13,7 @@ class MeanAggregator(nn.Module):
     """
     Aggregates a node's embeddings using mean of neighbors' embeddings
     """
-    def __init__(self, features, initializer="None", cuda=False, gcn=False): 
+    def __init__(self, features, initializer="None", cuda=False, gcn=False, feature_dim=100): 
         """
         Initializes the aggregator for a specific graph.
 
@@ -27,7 +27,7 @@ class MeanAggregator(nn.Module):
         self.features = features
         self.cuda = cuda
         self.gcn = gcn
-        self.embed = nn.Embedding(2708, 100)
+        self.embed = nn.Embedding(2708, feature_dim)
 
         
     def forward(self, nodes, to_neighs, num_sample=10, initializer="None"):
@@ -62,7 +62,7 @@ class MeanAggregator(nn.Module):
             embed_matrix = self.features(torch.LongTensor(unique_nodes_list).cuda())
         else:
             embed_matrix = self.features(torch.LongTensor(unique_nodes_list))
-        # print "embed_matrix has shape", embed_matrix.shape
+        # print("embed_matrix has shape", embed_matrix.shape)
         # print embed_matrix
         if initializer == "1hot":
             indices = [np.where(a == 1)[0][0] for a in embed_matrix]

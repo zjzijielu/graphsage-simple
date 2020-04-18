@@ -139,7 +139,7 @@ def run_cora(initializer, seed, epochs, batch_size=128, feature_dim=100, identit
     features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
    # features.cuda()
 
-    agg1 = MeanAggregator(features, cuda=True)
+    agg1 = MeanAggregator(features, cuda=True, feature_dim=feature_dim)
     enc1 = Encoder(features, feature_dim, identity_dim, adj_lists, agg1, gcn=True, cuda=False, initializer=initializer)
     agg2 = MeanAggregator(lambda nodes : enc1(nodes).t(), cuda=False)
     enc2 = Encoder(lambda nodes : enc1(nodes).t(), enc1.embed_dim, 128, adj_lists, agg2,

@@ -54,8 +54,8 @@ class Encoder(nn.Module):
             combined = torch.cat([self_feats, neigh_feats], dim=1)
         else:
             combined = neigh_feats
-        
-        if self.initializer in ["node_degree", "shared", "pagerank", "identity"]:
+
+        if self.initializer in ["node_degree", "shared", "pagerank"]:
             combined = F.sigmoid(self.weight.mm(combined.t()))
         else: 
             combined = F.relu(self.weight.mm(combined.t()))

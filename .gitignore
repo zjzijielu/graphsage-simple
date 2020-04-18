@@ -108,7 +108,7 @@ ENV/
 *.pickle
 *.pkl
 
-*.sh
+train_nodes.sh
 
 # deepwalk
 deepwalk/
