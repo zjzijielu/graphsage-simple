@@ -167,7 +167,7 @@ def load_data(dataset, identity_dim, initializer="None"):
     return feat_data, labels, adj_lists, num_nodes, num_classes
 '''
 
-def run_model(dataset, initializer, seed, epochs,classify, batch_size=128, feature_dim=100, identity_dim=50):
+def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=128, feature_dim=100, identity_dim=50):
     # merge run_cora and run_pubmed
     num_nodes_map = {"cora": 2708, "pubmed": 19717}
     num_classes_map = {"cora": 7, "pubmed": 3}
@@ -502,6 +502,8 @@ def main():
                         help="random seed for initialization")
     parser.add_argument("--dataset", type=str, default="cora",
                         help="dataset used")
+    parser.add_argument("--classify", type=str, default="node",
+                        help="classify task")
 
     args = parser.parse_args()
 
@@ -511,9 +513,10 @@ def main():
     seed = args.seed
     epochs = args.epochs
     dataset = args.dataset
+    classify = args.classify
 
 
-    run_model(dataset, initializer, seed, epochs, feature_dim=feature_dim, identity_dim=identity_dim)
+    run_model(dataset, initializer, seed, epochs, classify=classify, feature_dim=feature_dim, identity_dim=identity_dim)
 
 if __name__ == "__main__":
     main()
