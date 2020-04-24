@@ -13,7 +13,7 @@ class MeanAggregator(nn.Module):
     """
     Aggregates a node's embeddings using mean of neighbors' embeddings
     """
-    def __init__(self, features, initializer="None", cuda=False, gcn=False, feature_dim=100): 
+    def __init__(self, features, initializer="None", cuda=False, gcn=False, feature_dim=100, num_nodes=100): 
         """
         Initializes the aggregator for a specific graph.
 
@@ -27,7 +27,8 @@ class MeanAggregator(nn.Module):
         self.features = features
         self.cuda = cuda
         self.gcn = gcn
-        self.embed = nn.Embedding(2708, feature_dim)
+        if initializer == "1hot":
+            self.embed = nn.Embedding(num_nodes, feature_dim)
 
         
     def forward(self, nodes, to_neighs, num_sample=10, initializer="None"):

@@ -53,9 +53,9 @@ def extract_deepwalk_embeddings(filename, node_map):
             
     return feat_data
 
+'''
 def load_data(dataset, identity_dim, initializer="None"):
-    dataset_map = {"cora": 2708, "pubmed": 19717}
-    num_classes_map = {"cora": 7, "pubmed": 3}
+   
     label_file_path = {"cora": "cora/cora.content", "pubmed": "pubmed-data/Pubmed-Diabetes.NODE.paper.tab"}
     edge_file_path = {"cora": "cora/cora.cites", "pubmed": "pubmed-data/Pubmed-Diabetes.DIRECTED.cites.tab"}
     deepwalk_embedding_file_path = {"cora": "cora/cora.embeddings"}
@@ -64,7 +64,6 @@ def load_data(dataset, identity_dim, initializer="None"):
     num_classes = num_classes_map[dataset]
     label_file = label_file_path[dataset]
     edge_file = edge_file_path[dataset]
-    deepwalk_embedding_file = deepwalk_embedding_file_path[dataset]
     num_feats = identity_dim
     if initializer == "1hot":
         num_feats = num_nodes
@@ -105,6 +104,7 @@ def load_data(dataset, identity_dim, initializer="None"):
             G = nx.Graph()
             G.add_nodes_from(node_map.values())
         elif initializer == "deepwalk":
+            deepwalk_embedding_file = deepwalk_embedding_file_path[dataset]
             feat_data = extract_deepwalk_embeddings(deepwalk_embedding_file, node_map)
 
     adj_lists = defaultdict(set)
@@ -137,12 +137,29 @@ def load_data(dataset, identity_dim, initializer="None"):
                 feat_data[i, j] = v[i, j]
     
     return feat_data, labels, adj_lists, num_nodes, num_classes
+'''
 
 def run_model(dataset, initializer, seed, epochs, batch_size=128, feature_dim=100, identity_dim=50):
     # merge run_cora and run_pubmed
+    num_nodes_map = {"cora": 2708, "pubmed": 19717}
+    num_classes_map = {"cora": 7, "pubmed": 3}
+    enc1_num_samples_map = {"cora": 5, "pubmed": 10}
+    enc2_num_samples_map = {"cora": 5, "pubmed": 25}
+
     np.random.seed(seed)
     random.seed(seed)
-    feat_data, labels, adj_lists, num_nodes, num_classes = load_data(dataset, feature_dim, initializer)
+    feat_data = []
+    labels = []
+    adj_lists = []
+    num_nodes = num_nodes_map[dataset]
+    num_classes = num_classes_map[dataset]
+
+    if dataset == "cora":
+        feat_data, labels, adj_lists = load_cora(feature_dim, initializer)
+    elif dataset == "pubmed":
+        feat_data, labels, adj_lists = load_pubmed(feature_dim, initializer)
+
+    # feat_data, labels, adj_lists = load_data(dataset, feature_dim, initializer)
     print(feat_data)
     if initializer == "1hot":
         feature_dim = num_nodes
@@ -151,13 +168,13 @@ def run_model(dataset, initializer, seed, epochs, batch_size=128, feature_dim=10
     features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
    # features.cuda()
 
-    agg1 = MeanAggregator(features, cuda=True, feature_dim=feature_dim)
+    agg1 = MeanAggregator(features, cuda=True, feature_dim=feature_dim, num_nodes=num_nodes, initializer=initializer)
     enc1 = Encoder(features, feature_dim, identity_dim, adj_lists, agg1, gcn=True, cuda=False, initializer=initializer)
-    agg2 = MeanAggregator(lambda nodes : enc1(nodes).t(), cuda=False)
+    agg2 = MeanAggregator(lambda nodes : enc1(nodes).t(), num_nodes, cuda=False)
     enc2 = Encoder(lambda nodes : enc1(nodes).t(), enc1.embed_dim, 128, adj_lists, agg2,
             base_model=enc1, gcn=True, cuda=False)
-    enc1.num_samples = 5
-    enc2.num_samples = 5
+    enc1.num_samples = enc1_num_samples_map[dataset]
+    enc2.num_samples = enc2_num_samples_map[dataset]
 
     graphsage = SupervisedGraphSage(num_classes, enc2)
 #    graphsage.cuda()
@@ -193,9 +210,9 @@ def run_model(dataset, initializer, seed, epochs, batch_size=128, feature_dim=10
     print("Validation F1 macro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="macro"))
     print("Average batch time:", np.mean(times))
 
-def load_cora(num_nodes, identity_dim, initializer="None"):
+def load_cora(feature_dim, initializer="None"):
     num_nodes = 2708
-    num_feats = identity_dim
+    num_feats = feature_dim
     if initializer == "1hot":
         num_feats = num_nodes
     feat_data = np.zeros((num_nodes, num_feats))
@@ -224,9 +241,9 @@ def load_cora(num_nodes, identity_dim, initializer="None"):
         if initializer == "1hot":
             feat_data = np.eye(num_nodes)
         elif initializer == "random_normal":
-            feat_data = np.random.normal(0, 1, (num_nodes, identity_dim))
+            feat_data = np.random.normal(0, 1, (num_nodes, feature_dim))
         elif initializer == "shared":
-            feat_data = np.ones((num_nodes, identity_dim))
+            feat_data = np.ones((num_nodes, feature_dim))
         elif initializer == "node_degree":
             feat_data = np.zeros((num_nodes, 1))
         elif initializer == "pagerank" or initializer == "eigen_decomposition":
@@ -259,9 +276,9 @@ def load_cora(num_nodes, identity_dim, initializer="None"):
         adj_matrix = nx.to_numpy_array(G)
         w, v = LA.eig(adj_matrix)
         indices = np.argsort(w)
-        feat_data = np.zeros((num_nodes, identity_dim))
+        feat_data = np.zeros((num_nodes, feature_dim))
         for i in range(num_nodes):
-            for j in range(identity_dim):
+            for j in range(feature_dim):
                 feat_data[i, j] = v[i, j]
 
     return feat_data, labels, adj_lists
@@ -319,23 +336,51 @@ def run_cora(initializer, seed, epochs, batch_size=128, feature_dim=100, identit
     print("Validation F1 macro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="macro"))
     print("Average batch time:", np.mean(times))
 
-def load_pubmed():
+def load_pubmed(feature_dim, initializer):
     #hardcoded for simplicity...
     num_nodes = 19717
-    num_feats = 500
+    num_feats = feature_dim
+    if initializer == "1hot":
+        num_feats = num_nodes
     feat_data = np.zeros((num_nodes, num_feats))
     labels = np.empty((num_nodes, 1), dtype=np.int64)
     node_map = {}
-    with open("pubmed-data/Pubmed-Diabetes.NODE.paper.tab") as fp:
-        fp.readline()
-        feat_map = {entry.split(":")[1]:i-1 for i,entry in enumerate(fp.readline().split("\t"))}
-        for i, line in enumerate(fp):
-            info = line.split("\t")
-            node_map[info[0]] = i
-            labels[i] = int(info[1].split("=")[1])-1
-            for word_info in info[2:-1]:
-                word_info = word_info.split("=")
-                feat_data[i][feat_map[word_info[0]]] = float(word_info[1])
+    label_map = {}
+    if initializer == "None":
+        with open("pubmed-data/Pubmed-Diabetes.NODE.paper.tab") as fp:
+            fp.readline()
+            feat_map = {entry.split(":")[1]:i-1 for i,entry in enumerate(fp.readline().split("\t"))}
+            for i, line in enumerate(fp):
+                info = line.split("\t")
+                node_map[info[0]] = i
+                labels[i] = int(info[1].split("=")[1])-1
+                for word_info in info[2:-1]:
+                    word_info = word_info.split("=")
+                    feat_data[i][feat_map[word_info[0]]] = float(word_info[1])
+    else:
+        with open("pubmed-data/Pubmed-Diabetes.NODE.paper.tab") as fp:
+            fp.readline()
+            fp.readline()
+            for i, line in enumerate(fp):
+                info = line.split("\t")
+                node_map[info[0]] = i
+                labels[i] = int(info[1].split("=")[1])-1
+
+        # set initializer method
+        if initializer == "1hot":
+            feat_data = np.eye(num_nodes)
+        elif initializer == "random_normal":
+            feat_data = np.random.normal(0, 1, (num_nodes, feature_dim))
+        elif initializer == "shared":
+            feat_data = np.ones((num_nodes, feature_dim))
+        elif initializer == "node_degree":
+            feat_data = np.zeros((num_nodes, 1))
+        elif initializer == "pagerank" or initializer == "eigen_decomposition":
+            G = nx.Graph()
+            G.add_nodes_from(node_map.values())
+        elif initializer == "deepwalk":
+            feat_data = extract_deepwalk_embeddings("pubmed/pubmed.embeddings", node_map)
+
     adj_lists = defaultdict(set)
     with open("pubmed-data/Pubmed-Diabetes.DIRECTED.cites.tab") as fp:
         fp.readline()
@@ -346,6 +391,27 @@ def load_pubmed():
             paper2 = node_map[info[-1].split(":")[1]]
             adj_lists[paper1].add(paper2)
             adj_lists[paper2].add(paper1)
+            if initializer == "pagerank" or initializer == "eigen_decomposition":
+                G.add_edge(paper1, paper2)
+                G.add_edge(paper2, paper1)
+
+    if initializer == "node_degree":
+        for k, v in adj_lists.items():
+            feat_data[k, 0] = len(v)
+    elif initializer == "pagerank":
+        feat_data = np.zeros((num_nodes, 1))
+        pagerank = nx.pagerank(G)
+        for k, v in pagerank.items():
+            feat_data[k, 0] = v
+    elif initializer == "eigen_decomposition":
+        adj_matrix = nx.to_numpy_array(G)
+        w, v = LA.eig(adj_matrix)
+        indices = np.argsort(w)
+        feat_data = np.zeros((num_nodes, feature_dim))
+        for i in range(num_nodes):
+            for j in range(feature_dim):
+                feat_data[i, j] = v[i, j]
+
     return feat_data, labels, adj_lists
 
 def run_pubmed():
