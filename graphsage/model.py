@@ -405,7 +405,9 @@ def load_pubmed(feature_dim, initializer):
             feat_data[k, 0] = v
     elif initializer == "eigen_decomposition":
         adj_matrix = nx.to_numpy_array(G)
+        print("start computing eigen vectors")
         w, v = LA.eig(adj_matrix)
+        print("finished computing eigen vectors")
         indices = np.argsort(w)
         feat_data = np.zeros((num_nodes, feature_dim))
         for i in range(num_nodes):
