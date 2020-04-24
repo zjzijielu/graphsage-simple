@@ -16,10 +16,38 @@ import argparse
 import networkx as nx
 from numpy import linalg as LA
 
+import torch.nn.functional as F
+
 """
 Simple supervised GraphSAGE model as well as examples running the model
 on the Cora and Pubmed datasets.
 """
+
+class SupervisedGraphSageClassify(nn.Module):
+
+    def __init__(self, num_classes, enc, dim_target):
+        super(SupervisedGraphSage, self).__init__()
+        self.enc = enc
+        self.xent = nn.CrossEntropyLoss()
+
+        self.weight = nn.Parameter(torch.FloatTensor(num_classes, enc.embed_dim))
+
+        self.fc1 = nn.Linear(2 * enc.embed_dim, enc.embed_dim)
+        self.fc2 = nn.Linear(enc.embed_dim, dim_target)
+
+        init.xavier_uniform(self.weight)
+
+    def forward(self, nodes):
+        embeds = self.enc(nodes)
+        hidden1 = F.relu(self.fc1(embeds.t()))
+        return self.fc2(hidden1)
+        #
+        # scores = self.weight.mm(embeds)
+        # return scores.t()
+
+    def loss(self, nodes, labels):
+        scores = self.forward(nodes)
+        return self.xent(scores, labels.squeeze())
 
 class SupervisedGraphSage(nn.Module):
 
@@ -138,7 +166,7 @@ def load_data(dataset, identity_dim, initializer="None"):
     
     return feat_data, labels, adj_lists, num_nodes, num_classes
 
-def run_model(dataset, initializer, seed, epochs, batch_size=128, feature_dim=100, identity_dim=50):
+def run_model(dataset, initializer, seed, epochs,classify, batch_size=128, feature_dim=100, identity_dim=50):
     # merge run_cora and run_pubmed
     np.random.seed(seed)
     random.seed(seed)
@@ -158,6 +186,7 @@ def run_model(dataset, initializer, seed, epochs, batch_size=128, feature_dim=10
             base_model=enc1, gcn=True, cuda=False)
     enc1.num_samples = 5
     enc2.num_samples = 5
+
 
     graphsage = SupervisedGraphSage(num_classes, enc2)
 #    graphsage.cuda()
