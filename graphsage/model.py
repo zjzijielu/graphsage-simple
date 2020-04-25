@@ -81,163 +81,117 @@ def extract_deepwalk_embeddings(filename, node_map):
             
     return feat_data
 
-'''
-def load_data(dataset, identity_dim, initializer="None"):
-   
-    label_file_path = {"cora": "cora/cora.content", "pubmed": "pubmed-data/Pubmed-Diabetes.NODE.paper.tab"}
-    edge_file_path = {"cora": "cora/cora.cites", "pubmed": "pubmed-data/Pubmed-Diabetes.DIRECTED.cites.tab"}
-    deepwalk_embedding_file_path = {"cora": "cora/cora.embeddings"}
 
-    num_nodes = dataset_map[dataset]
-    num_classes = num_classes_map[dataset]
-    label_file = label_file_path[dataset]
-    edge_file = edge_file_path[dataset]
-    num_feats = identity_dim
-    if initializer == "1hot":
-        num_feats = num_nodes
-    
-    feat_data = np.zeros((num_nodes, num_feats))
+def load_enzyme_data(name, identity_dim, initializer="None"):
+    raw_dir='graph_data'
+
+    indicator_path = raw_dir / f'ENZYMES_graph_indicator.txt'
+    edges_path =  raw_dir / f'ENZYMES_A.txt'
+    graph_labels_path = raw_dir /f'ENZYMES_graph_labels.txt'
+    node_labels_path = raw_dir /f'ENZYMES_node_labels.txt'
+    edge_labels_path = raw_dir /f'ENZYMES_edge_labels.txt'
+    node_attrs_path = raw_dir /f'ENZYMES_node_attributes.txt'
+    edge_attrs_path = raw_dir /f'ENZYMES_edge_attributes.txt'
+
+    unique_node_labels = set()
+    unique_edge_labels = set()
+
+    indicator, edge_indicator = [-1], [(-1,-1)]
+    graph_nodes = defaultdict(list)
+    graph_edges = defaultdict(list)
+    node_labels = defaultdict(list)
+    edge_labels = defaultdict(list)
+    node_attrs = defaultdict(list)
+    edge_attrs = defaultdict(list)
+
+
+
+    unique_node_labels = set()
+    unique_edge_labels = set()
+
+    indicator, edge_indicator = [-1], [(-1,-1)]
+    graph_nodes = defaultdict(list)
+    # graph_edges = defaultdict(list)
+    # node_labels = defaultdict(list)
+    # edge_labels = defaultdict(list)
+    # node_attrs = defaultdict(list)
+    # edge_attrs = defaultdict(list)
+
+    # label_map = {}#
+    graph_labels = []
+    with open(graph_labels_path, "r") as f:
+        for i, line in enumerate(f.readlines(), 1):
+            line = line.rstrip("\n")
+            target = int(line)
+            if target == -1:
+                graph_labels.append(0)
+            else:
+                graph_labels.append(target)
+
+        if min(graph_labels) == 1:  # Shift by one to the left. Apparently this is necessary for multiclass tasks.
+            graph_labels = [l - 1 for l in graph_labels]
+
+
+    with open(indicator_path, "r") as f:
+        for i, line in enumerate(f.readlines(), 1):
+            line = line.rstrip("\n")
+            graph_id = int(line)
+            indicator.append(graph_id)
+            graph_nodes[graph_id].append(i)
+
+
+    #
+    labels=[]
+    if node_labels_path.exists():
+        with open(node_labels_path, "r") as f:
+            for i, line in enumerate(f.readlines(), 1):
+                line = line.rstrip("\n")
+                node_label = int(line)
+                # unique_node_labels.add(node_label)
+                graph_id = indicator[i]
+                # node_labels[graph_id].append(node_label)
+                # node_map[i]=node_label
+                labels[i]=graph_labels[indicator[i]]
+
+    num_nodes=19580
+    feature_dim=21
+    num_feats = feature_dim
     labels = np.empty((num_nodes,1), dtype=np.int64)
-    node_map = {}
-    label_map = {}
 
-    if initializer == "None":
-        with open(label_file) as fp:
-            for i,line in enumerate(fp):
-                info = line.strip().split()
-                feat_data[i,:] = map(float, info[1:-1])
-                node_map[info[0]] = i
-                if not info[-1] in label_map:
-                    label_map[info[-1]] = len(label_map)
-                labels[i] = label_map[info[-1]]
-    else:
-        print("Initializing with", initializer)
-        with open("cora/cora.content") as fp:
-            for i, line in enumerate(fp):
-                info = line.strip().split()
-                node_map[info[0]] = i
-                if not info[-1] in label_map:
-                    label_map[info[-1]] = len(label_map)
-                labels[i] = label_map[info[-1]]
-        # set initializer method
-        if initializer == "1hot":
-            feat_data = np.eye(num_nodes)
-        elif initializer == "random_normal":
-            feat_data = np.random.normal(0, 1, (num_nodes, identity_dim))
-        elif initializer == "shared":
-            feat_data = np.ones((num_nodes, identity_dim))
-        elif initializer == "node_degree":
-            feat_data = np.zeros((num_nodes, 1))
-        elif initializer == "pagerank" or initializer == "eigen_decomposition":
-            G = nx.Graph()
-            G.add_nodes_from(node_map.values())
-        elif initializer == "deepwalk":
-            deepwalk_embedding_file = deepwalk_embedding_file_path[dataset]
-            feat_data = extract_deepwalk_embeddings(deepwalk_embedding_file, node_map)
+    dim_target=6
+    feat_data = np.zeros((num_nodes, num_feats))
+
+
+    # set initializer method
+    if initializer == "1hot":
+        feat_data = np.eye(num_nodes)
+    elif initializer == "random_normal":
+        feat_data = np.random.normal(0, 1, (num_nodes, feature_dim))
+
+
 
     adj_lists = defaultdict(set)
-    with open(edge_file) as fp:
-        for i,line in enumerate(fp):
-            info = line.strip().split()
-            paper1 = node_map[info[0]]
-            paper2 = node_map[info[1]]
-            adj_lists[paper1].add(paper2)
-            adj_lists[paper2].add(paper1)
-            if initializer == "pagerank" or initializer == "eigen_decomposition":
-                G.add_edge(paper1, paper2)
-                G.add_edge(paper2, paper1)
 
-    if initializer == "node_degree":
-        for k, v in adj_lists.items():
-            feat_data[k, 0] = len(v)
-    elif initializer == "pagerank":
-        feat_data = np.zeros((num_nodes, 1))
-        pagerank = nx.pagerank(G)
-        for k, v in pagerank.items():
-            feat_data[k, 0] = v
-    elif initializer == "eigen_decomposition":
-        adj_matrix = nx.to_numpy_array(G)
-        w, v = LA.eig(adj_matrix)
-        indices = np.argsort(w)
-        feat_data = np.zeros((num_nodes, identity_dim))
-        for i in range(num_nodes):
-            for j in range(identity_dim):
-                feat_data[i, j] = v[i, j]
-    
-    return feat_data, labels, adj_lists, num_nodes, num_classes
-'''
+    with open(edges_path, "r") as f:
+        for i, line in enumerate(f.readlines(), 1):
+            line = line.rstrip("\n")
+            edge = [int(e) for e in line.split(',')]
 
-def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=128, feature_dim=100, identity_dim=50):
-    # merge run_cora and run_pubmed
-    num_nodes_map = {"cora": 2708, "pubmed": 19717}
-    num_classes_map = {"cora": 7, "pubmed": 3}
-    enc1_num_samples_map = {"cora": 5, "pubmed": 10}
-    enc2_num_samples_map = {"cora": 5, "pubmed": 25}
+            adj_lists[edge[0]].add(edge[1])
 
-    np.random.seed(seed)
-    random.seed(seed)
-    feat_data = []
-    labels = []
-    adj_lists = []
-    num_nodes = num_nodes_map[dataset]
-    num_classes = num_classes_map[dataset]
+            # edge_indicator.append(edge)
 
-    if dataset == "cora":
-        feat_data, labels, adj_lists = load_cora(feature_dim, initializer)
-    elif dataset == "pubmed":
-        feat_data, labels, adj_lists = load_pubmed(feature_dim, initializer)
+            # edge[0] is a node id, and it is used to retrieve
+            # the corresponding graph id to which it belongs to
+            # (see README.txt)
+            # graph_id = indicator[edge[0]]
 
-    # feat_data, labels, adj_lists = load_data(dataset, feature_dim, initializer)
-    print(feat_data)
-    if initializer == "1hot":
-        feature_dim = num_nodes
-    print("feature dim is", feature_dim)
-    features = nn.Embedding(num_nodes, feature_dim)
-    features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
-   # features.cuda()
+            # graph_edges[graph_id].append(edge)
 
-    agg1 = MeanAggregator(features, cuda=True, feature_dim=feature_dim, num_nodes=num_nodes, initializer=initializer)
-    enc1 = Encoder(features, feature_dim, identity_dim, adj_lists, agg1, gcn=True, cuda=False, initializer=initializer)
-    agg2 = MeanAggregator(lambda nodes : enc1(nodes).t(), num_nodes, cuda=False)
-    enc2 = Encoder(lambda nodes : enc1(nodes).t(), enc1.embed_dim, 128, adj_lists, agg2,
-            base_model=enc1, gcn=True, cuda=False)
-    enc1.num_samples = enc1_num_samples_map[dataset]
-    enc2.num_samples = enc2_num_samples_map[dataset]
+    return feat_data, labels, adj_lists
 
 
-    graphsage = SupervisedGraphSage(num_classes, enc2)
-#    graphsage.cuda()
-    rand_indices = np.random.permutation(num_nodes)
-    test_end_idx = int(0.1 * num_nodes)
-    val_end_idx = int(0.2 * num_nodes)
-    test = rand_indices[:test_end_idx]
-    val = rand_indices[test_end_idx:val_end_idx]
-    train = list(rand_indices[val_end_idx:])
-    train_num = len(train)
 
-    optimizer = torch.optim.SGD(filter(lambda p : p.requires_grad, graphsage.parameters()), lr=0.7)
-    times = []
-
-    for epoch in range(epochs):
-        print("Epoch:", epoch)
-        random.shuffle(train)
-        for batch in range(0, train_num, batch_size):
-            batch_nodes = train[batch:max(train_num, batch+batch_size)]
-            start_time = time.time()
-            optimizer.zero_grad()
-            loss = graphsage.loss(batch_nodes, 
-                    Variable(torch.LongTensor(labels[np.array(batch_nodes)])))
-            loss.backward()
-            optimizer.step()
-            end_time = time.time()
-            times.append(end_time-start_time)
-            if (batch == 0):
-                print("Batch", batch, "Loss:", loss.item())
-
-    val_output = graphsage.forward(val) 
-    print("Validation F1 micro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro"))
-    print("Validation F1 macro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="macro"))
-    print("Average batch time:", np.mean(times))
 
 def load_cora(feature_dim, initializer="None"):
     num_nodes = 2708
@@ -311,6 +265,81 @@ def load_cora(feature_dim, initializer="None"):
                 feat_data[i, j] = v[i, j]
 
     return feat_data, labels, adj_lists
+
+def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=128, feature_dim=100, identity_dim=50):
+    # merge run_cora and run_pubmed
+    num_nodes_map = {"cora": 2708, "pubmed": 19717}
+    num_classes_map = {"cora": 7, "pubmed": 3}
+    enc1_num_samples_map = {"cora": 5, "pubmed": 10}
+    enc2_num_samples_map = {"cora": 5, "pubmed": 25}
+
+    np.random.seed(seed)
+    random.seed(seed)
+    feat_data = []
+    labels = []
+    adj_lists = []
+    num_nodes = num_nodes_map[dataset]
+    num_classes = num_classes_map[dataset]
+
+    if dataset == "cora":
+        feat_data, labels, adj_lists = load_cora(feature_dim, initializer)
+    elif dataset == "pubmed":
+        feat_data, labels, adj_lists = load_pubmed(feature_dim, initializer)
+
+    # feat_data, labels, adj_lists = load_data(dataset, feature_dim, initializer)
+    print(feat_data)
+    if initializer == "1hot":
+        feature_dim = num_nodes
+    print("feature dim is", feature_dim)
+    features = nn.Embedding(num_nodes, feature_dim)
+    features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
+   # features.cuda()
+
+    agg1 = MeanAggregator(features, cuda=True, feature_dim=feature_dim, num_nodes=num_nodes, initializer=initializer)
+    enc1 = Encoder(features, feature_dim, identity_dim, adj_lists, agg1, gcn=True, cuda=False, initializer=initializer)
+    agg2 = MeanAggregator(lambda nodes : enc1(nodes).t(), num_nodes, cuda=False)
+    enc2 = Encoder(lambda nodes : enc1(nodes).t(), enc1.embed_dim, 128, adj_lists, agg2,
+            base_model=enc1, gcn=True, cuda=False)
+    enc1.num_samples = enc1_num_samples_map[dataset]
+    enc2.num_samples = enc2_num_samples_map[dataset]
+
+
+    graphsage = SupervisedGraphSage(num_classes, enc2)
+#    graphsage.cuda()
+    rand_indices = np.random.permutation(num_nodes)
+    test_end_idx = int(0.1 * num_nodes)
+    val_end_idx = int(0.2 * num_nodes)
+    test = rand_indices[:test_end_idx]
+    val = rand_indices[test_end_idx:val_end_idx]
+    train = list(rand_indices[val_end_idx:])
+    train_num = len(train)
+
+    optimizer = torch.optim.SGD(filter(lambda p : p.requires_grad, graphsage.parameters()), lr=0.7)
+    times = []
+
+    for epoch in range(epochs):
+        print("Epoch:", epoch)
+        random.shuffle(train)
+        for batch in range(0, train_num, batch_size):
+            batch_nodes = train[batch:max(train_num, batch+batch_size)]
+            start_time = time.time()
+            optimizer.zero_grad()
+            loss = graphsage.loss(batch_nodes, 
+                    Variable(torch.LongTensor(labels[np.array(batch_nodes)])))
+            loss.backward()
+            optimizer.step()
+            end_time = time.time()
+            times.append(end_time-start_time)
+            if (batch == 0):
+                print("Batch", batch, "Loss:", loss.item())
+
+    val_output = graphsage.forward(val) 
+    print("Validation F1 micro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro"))
+    print("Validation F1 macro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="macro"))
+    print("Average batch time:", np.mean(times))
+
+
+
 
 def run_cora(initializer, seed, epochs, batch_size=128, feature_dim=100, identity_dim=50):
     np.random.seed(seed)
