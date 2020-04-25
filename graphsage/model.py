@@ -23,13 +23,26 @@ Simple supervised GraphSAGE model as well as examples running the model
 on the Cora and Pubmed datasets.
 """
 
+class MulticlassClassificationLoss(ClassificationLoss):
+    def __init__(self, reduction=None):
+        super().__init__()
+        if reduction is not None:
+            self.loss = nn.CrossEntropyLoss(reduction=reduction)
+        else:
+            self.loss = nn.CrossEntropyLoss()
+
+    def _get_correct(self, outputs):
+        return torch.argmax(outputs, dim=1)
+
+
+
 class SupervisedGraphSageClassify(nn.Module):
 
     def __init__(self, num_classes, enc, dim_target):
         super(SupervisedGraphSage, self).__init__()
         self.enc = enc
         self.xent = nn.CrossEntropyLoss()
-
+        self.loss=MulticlassClassificationLoss
         self.weight = nn.Parameter(torch.FloatTensor(num_classes, enc.embed_dim))
 
         self.fc1 = nn.Linear(2 * enc.embed_dim, enc.embed_dim)
@@ -42,12 +55,12 @@ class SupervisedGraphSageClassify(nn.Module):
         hidden1 = F.relu(self.fc1(embeds.t()))
         return self.fc2(hidden1)
         #
-        # scores = self.weight.mm(embeds)
-        # return scores.t()
+        # scores = self.weight.mm(embeds) # matrix multiplication
+        # return scores.t() #transpose
 
     def loss(self, nodes, labels):
         scores = self.forward(nodes)
-        return self.xent(scores, labels.squeeze())
+        return self.xent(scores, labels.squeeze()) # gold
 
 class SupervisedGraphSage(nn.Module):
 
@@ -55,6 +68,7 @@ class SupervisedGraphSage(nn.Module):
         super(SupervisedGraphSage, self).__init__()
         self.enc = enc
         self.xent = nn.CrossEntropyLoss()
+        self.loss=MulticlassClassificationLoss
 
         self.weight = nn.Parameter(torch.FloatTensor(num_classes, enc.embed_dim))
         init.xavier_uniform(self.weight)
@@ -192,7 +206,6 @@ def load_enzyme_data(name, identity_dim, initializer="None"):
 
 
 
-
 def load_cora(feature_dim, initializer="None"):
     num_nodes = 2708
     num_feats = feature_dim
@@ -303,8 +316,10 @@ def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=12
     enc1.num_samples = enc1_num_samples_map[dataset]
     enc2.num_samples = enc2_num_samples_map[dataset]
 
-
-    graphsage = SupervisedGraphSage(num_classes, enc2)
+    if(classify=='node'):
+        graphsage = SupervisedGraphSage(num_classes, enc2)
+    else:
+        graphsage= SupervisedGraphSageClassify(num_classes,enc2, 6)
 #    graphsage.cuda()
     rand_indices = np.random.permutation(num_nodes)
     test_end_idx = int(0.1 * num_nodes)
