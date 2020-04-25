@@ -42,7 +42,7 @@ class SupervisedGraphSageClassify(nn.Module):
         super(SupervisedGraphSage, self).__init__()
         self.enc = enc
         self.xent = nn.CrossEntropyLoss()
-        self.loss=MulticlassClassificationLoss
+        self.loss_func=MulticlassClassificationLoss
         self.weight = nn.Parameter(torch.FloatTensor(num_classes, enc.embed_dim))
 
         self.fc1 = nn.Linear(2 * enc.embed_dim, enc.embed_dim)
@@ -60,7 +60,8 @@ class SupervisedGraphSageClassify(nn.Module):
 
     def loss(self, nodes, labels):
         scores = self.forward(nodes)
-        return self.xent(scores, labels.squeeze()) # gold
+        # return self.xent(scores, labels.squeeze()) # gold
+        return self.loss_func(labels.squeeze(),scores)
 
 class SupervisedGraphSage(nn.Module):
 
