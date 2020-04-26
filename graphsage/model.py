@@ -6,7 +6,7 @@ from torch.autograd import Variable
 import numpy as np
 import time
 import random
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, accuracy_score
 from collections import defaultdict
 
 from graphsage.encoders import Encoder
@@ -235,6 +235,7 @@ def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=12
                 print("Batch", batch, "Loss:", loss.item())
 
     val_output = graphsage.forward(val) 
+    print("Accuracy:", accuracy_score(labels[val], val_output.data.numpy().argmax(axis=1)))
     print("Validation F1 micro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro"))
     print("Validation F1 macro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="macro"))
     print("Average batch time:", np.mean(times))
