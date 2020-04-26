@@ -16,10 +16,38 @@ import argparse
 import networkx as nx
 from numpy import linalg as LA
 
+import torch.nn.functional as F
+
 """
 Simple supervised GraphSAGE model as well as examples running the model
 on the Cora and Pubmed datasets.
 """
+
+class SupervisedGraphSageClassify(nn.Module):
+
+    def __init__(self, num_classes, enc, dim_target):
+        super(SupervisedGraphSage, self).__init__()
+        self.enc = enc
+        self.xent = nn.CrossEntropyLoss()
+
+        self.weight = nn.Parameter(torch.FloatTensor(num_classes, enc.embed_dim))
+
+        self.fc1 = nn.Linear(2 * enc.embed_dim, enc.embed_dim)
+        self.fc2 = nn.Linear(enc.embed_dim, dim_target)
+
+        init.xavier_uniform(self.weight)
+
+    def forward(self, nodes):
+        embeds = self.enc(nodes)
+        hidden1 = F.relu(self.fc1(embeds.t()))
+        return self.fc2(hidden1)
+        #
+        # scores = self.weight.mm(embeds)
+        # return scores.t()
+
+    def loss(self, nodes, labels):
+        scores = self.forward(nodes)
+        return self.xent(scores, labels.squeeze())
 
 class SupervisedGraphSage(nn.Module):
 
@@ -139,7 +167,7 @@ def load_data(dataset, identity_dim, initializer="None"):
     return feat_data, labels, adj_lists, num_nodes, num_classes
 '''
 
-def run_model(dataset, initializer, seed, epochs, batch_size=128, feature_dim=100, identity_dim=50):
+def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=128, feature_dim=100, identity_dim=50):
     # merge run_cora and run_pubmed
     num_nodes_map = {"cora": 2708, "pubmed": 19717}
     num_classes_map = {"cora": 7, "pubmed": 3}
@@ -175,6 +203,7 @@ def run_model(dataset, initializer, seed, epochs, batch_size=128, feature_dim=10
             base_model=enc1, gcn=True, cuda=False)
     enc1.num_samples = enc1_num_samples_map[dataset]
     enc2.num_samples = enc2_num_samples_map[dataset]
+
 
     graphsage = SupervisedGraphSage(num_classes, enc2)
 #    graphsage.cuda()
@@ -405,7 +434,9 @@ def load_pubmed(feature_dim, initializer):
             feat_data[k, 0] = v
     elif initializer == "eigen_decomposition":
         adj_matrix = nx.to_numpy_array(G)
-	w, v = LA.eig(adj_matrix)
+        print("start computing eigen vectors")
+        w, v = LA.eig(adj_matrix)
+        print("finished computing eigen vectors")
         indices = np.argsort(w)
         feat_data = np.zeros((num_nodes, feature_dim))
         for i in range(num_nodes):
@@ -471,6 +502,8 @@ def main():
                         help="random seed for initialization")
     parser.add_argument("--dataset", type=str, default="cora",
                         help="dataset used")
+    parser.add_argument("--classify", type=str, default="node",
+                        help="classify task")
 
     args = parser.parse_args()
 
@@ -480,9 +513,11 @@ def main():
     seed = args.seed
     epochs = args.epochs
     dataset = args.dataset
+    classify = args.classify
 
 
-    run_model(dataset, initializer, seed, epochs, feature_dim=feature_dim, identity_dim=identity_dim)
+    run_model(dataset, initializer, seed, epochs, classify=classify, feature_dim=feature_dim, identity_dim=identity_dim)
 
 if __name__ == "__main__":
     main()
+
