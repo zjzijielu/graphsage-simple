@@ -191,6 +191,8 @@ def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=12
     print(feat_data)
     if initializer == "1hot":
         feature_dim = num_nodes
+    elif initializer == "node_degree":
+        feature_dim = feat_data.shape[1]
     print("feature dim is", feature_dim)
     features = nn.Embedding(num_nodes, feature_dim)
     features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
@@ -235,7 +237,6 @@ def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=12
                 print("Batch", batch, "Loss:", loss.item())
 
     val_output = graphsage.forward(val) 
-    print("Accuracy:", accuracy_score(labels[val], val_output.data.numpy().argmax(axis=1)))
     print("Validation F1 micro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro"))
     print("Validation F1 macro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="macro"))
     print("Average batch time:", np.mean(times))
@@ -295,8 +296,12 @@ def load_cora(feature_dim, initializer="None"):
                 G.add_edge(paper2, paper1)
 
     if initializer == "node_degree":
+        # convert to 1hot representation
+        node_degrees = [len(v) for v in adj_lists.values()]
+        max_degree = max(node_degrees)
+        feat_data = np.zeros((num_nodes, max_degree+1))
         for k, v in adj_lists.items():
-            feat_data[k, 0] = len(v)
+            feat_data[k, len(v)] = 1
     elif initializer == "pagerank":
         feat_data = np.zeros((num_nodes, 1))
         pagerank = nx.pagerank(G)
@@ -318,9 +323,12 @@ def run_cora(initializer, seed, epochs, batch_size=128, feature_dim=100, identit
     random.seed(seed)
     num_nodes = 2708
     feat_data, labels, adj_lists = load_cora(num_nodes, feature_dim, initializer)
-    print(feat_data)
+    print(feat_data, initializer)
     if initializer == "1hot":
         feature_dim = num_nodes
+    elif initializer == "node_degree":
+        feature_dim = feat_data.shape[1]
+        print(feat_data.shape)
     print("feature dim is", feature_dim)
     features = nn.Embedding(num_nodes, feature_dim)
     features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
