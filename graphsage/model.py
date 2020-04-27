@@ -308,13 +308,23 @@ def load_cora(feature_dim, initializer="None"):
         for k, v in pagerank.items():
             feat_data[k, 0] = v
     elif initializer == "eigen_decomposition":
-        adj_matrix = nx.to_numpy_array(G)
-        w, v = LA.eig(adj_matrix)
-        indices = np.argsort(w)
+        try:
+            v = np.load("cora/cora_eigenvector.npy")
+            w = np.load("cora/cora_eigenvalue.npy")
+            print(v.shape, w.shape)
+        except:
+            adj_matrix = nx.to_numpy_array(G)
+            print("start computing eigen vectors")
+            w, v = LA.eig(adj_matrix)
+            np.save("cora/cora_eigenvalue", w)
+            np.save("cora/cora_eigenvector", v)
+        v = v.transpose()
+        indices = np.argsort(w)[::-1]
+        print(v)
         feat_data = np.zeros((num_nodes, feature_dim))
         for i in range(num_nodes):
             for j in range(feature_dim):
-                feat_data[i, j] = v[i, j]
+                feat_data[i, j] = v[indices[j], i]
 
     return feat_data, labels, adj_lists
 
@@ -442,15 +452,23 @@ def load_pubmed(feature_dim, initializer):
         for k, v in pagerank.items():
             feat_data[k, 0] = v
     elif initializer == "eigen_decomposition":
-        adj_matrix = nx.to_numpy_array(G)
-        print("start computing eigen vectors")
-        w, v = LA.eig(adj_matrix)
+        # save eigen values and eigen vectors
+        try:
+            v = np.load("pubmed/pubmed_eigenvector.npy")
+            w = np.load("pubmed/pubmed_eigenvalue.npy")
+            print(v.shape, w.shape)
+        except:
+            adj_matrix = nx.to_numpy_array(G)
+            print("start computing eigen vectors")
+            w, v = LA.eig(adj_matrix)
+            np.save("pubmed/pubmed_eigenvalue", w)
+            np.save("pubmed/pubmed_eigenvector", v)
         print("finished computing eigen vectors")
-        indices = np.argsort(w)
+        indices = np.argsort(w)[::n]
         feat_data = np.zeros((num_nodes, feature_dim))
         for i in range(num_nodes):
             for j in range(feature_dim):
-                feat_data[i, j] = v[i, j]
+                feat_data[i, j] = v[indices[i], j]
 
     return feat_data, labels, adj_lists
 
