@@ -310,21 +310,21 @@ def load_cora(feature_dim, initializer="None"):
     elif initializer == "eigen_decomposition":
         try:
             v = np.load("cora/cora_eigenvector.npy")
-            w = np.load("cora/cora_eigenvalue.npy")
-            print(v.shape, w.shape)
+            print(v.shape)
         except:
             adj_matrix = nx.to_numpy_array(G)
             print("start computing eigen vectors")
             w, v = LA.eig(adj_matrix)
-            np.save("cora/cora_eigenvalue", w)
-            np.save("cora/cora_eigenvector", v)
-        v = v.transpose()
-        indices = np.argsort(w)[::-1]
+            indices = np.argsort(w)[::-1]
+            v = v.transpose()[indices]
+            # only save top 1000 eigenvectors
+            np.save("cora/cora_eigenvector", v[:1000])
         print(v)
         feat_data = np.zeros((num_nodes, feature_dim))
+        assert(feature_dim <= 1000)
         for i in range(num_nodes):
             for j in range(feature_dim):
-                feat_data[i, j] = v[indices[j], i]
+                feat_data[i, j] = v[j, i]
 
     return feat_data, labels, adj_lists
 

@@ -113,3 +113,6 @@ train_nodes.sh
 # deepwalk
 deepwalk/
 *.embeddings
+
+# eigen vectors
+*.npy
