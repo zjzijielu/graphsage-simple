@@ -452,23 +452,23 @@ def load_pubmed(feature_dim, initializer):
         for k, v in pagerank.items():
             feat_data[k, 0] = v
     elif initializer == "eigen_decomposition":
-        # save eigen values and eigen vectors
         try:
             v = np.load("pubmed/pubmed_eigenvector.npy")
-            w = np.load("pubmed/pubmed_eigenvalue.npy")
-            print(v.shape, w.shape)
+            print(v.shape)
         except:
             adj_matrix = nx.to_numpy_array(G)
             print("start computing eigen vectors")
             w, v = LA.eig(adj_matrix)
-            np.save("pubmed/pubmed_eigenvalue", w)
-            np.save("pubmed/pubmed_eigenvector", v)
-        print("finished computing eigen vectors")
-        indices = np.argsort(w)[::n]
+            indices = np.argsort(w)[::-1]
+            v = v.transpose()[indices]
+            # only save top 1000 eigenvectors
+            np.save("pubmed/pubmed_eigenvector", v[:1000])
+        print(v)
         feat_data = np.zeros((num_nodes, feature_dim))
+        assert(feature_dim <= 1000)
         for i in range(num_nodes):
             for j in range(feature_dim):
-                feat_data[i, j] = v[indices[i], j]
+                feat_data[i, j] = v[j, i]
 
     return feat_data, labels, adj_lists
 
