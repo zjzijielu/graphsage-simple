@@ -191,6 +191,8 @@ def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=12
     print(feat_data)
     if initializer == "1hot":
         feature_dim = num_nodes
+    elif initializer == "node_degree":
+        feature_dim = feat_data.shape[1]
     print("feature dim is", feature_dim)
     features = nn.Embedding(num_nodes, feature_dim)
     features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
@@ -235,7 +237,6 @@ def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=12
                 print("Batch", batch, "Loss:", loss.item())
 
     val_output = graphsage.forward(val) 
-    print("Accuracy:", accuracy_score(labels[val], val_output.data.numpy().argmax(axis=1)))
     print("Validation F1 micro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro"))
     print("Validation F1 macro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="macro"))
     print("Average batch time:", np.mean(times))
@@ -295,21 +296,35 @@ def load_cora(feature_dim, initializer="None"):
                 G.add_edge(paper2, paper1)
 
     if initializer == "node_degree":
+        # convert to 1hot representation
+        node_degrees = [len(v) for v in adj_lists.values()]
+        max_degree = max(node_degrees)
+        feat_data = np.zeros((num_nodes, max_degree+1))
         for k, v in adj_lists.items():
-            feat_data[k, 0] = len(v)
+            feat_data[k, len(v)] = 1
     elif initializer == "pagerank":
         feat_data = np.zeros((num_nodes, 1))
         pagerank = nx.pagerank(G)
         for k, v in pagerank.items():
             feat_data[k, 0] = v
     elif initializer == "eigen_decomposition":
-        adj_matrix = nx.to_numpy_array(G)
-        w, v = LA.eig(adj_matrix)
-        indices = np.argsort(w)
+        try:
+            v = np.load("cora/cora_eigenvector.npy")
+            print(v.shape)
+        except:
+            adj_matrix = nx.to_numpy_array(G)
+            print("start computing eigen vectors")
+            w, v = LA.eig(adj_matrix)
+            indices = np.argsort(w)[::-1]
+            v = v.transpose()[indices]
+            # only save top 1000 eigenvectors
+            np.save("cora/cora_eigenvector", v[:1000])
+        print(v)
         feat_data = np.zeros((num_nodes, feature_dim))
+        assert(feature_dim <= 1000)
         for i in range(num_nodes):
             for j in range(feature_dim):
-                feat_data[i, j] = v[i, j]
+                feat_data[i, j] = v[j, i]
 
     return feat_data, labels, adj_lists
 
@@ -318,9 +333,12 @@ def run_cora(initializer, seed, epochs, batch_size=128, feature_dim=100, identit
     random.seed(seed)
     num_nodes = 2708
     feat_data, labels, adj_lists = load_cora(num_nodes, feature_dim, initializer)
-    print(feat_data)
+    print(feat_data, initializer)
     if initializer == "1hot":
         feature_dim = num_nodes
+    elif initializer == "node_degree":
+        feature_dim = feat_data.shape[1]
+        print(feat_data.shape)
     print("feature dim is", feature_dim)
     features = nn.Embedding(num_nodes, feature_dim)
     features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
@@ -434,15 +452,23 @@ def load_pubmed(feature_dim, initializer):
         for k, v in pagerank.items():
             feat_data[k, 0] = v
     elif initializer == "eigen_decomposition":
-        adj_matrix = nx.to_numpy_array(G)
-        print("start computing eigen vectors")
-        w, v = LA.eig(adj_matrix)
+        # save eigen values and eigen vectors
+        try:
+            v = np.load("pubmed/pubmed_eigenvector.npy")
+            w = np.load("pubmed/pubmed_eigenvalue.npy")
+            print(v.shape, w.shape)
+        except:
+            adj_matrix = nx.to_numpy_array(G)
+            print("start computing eigen vectors")
+            w, v = LA.eig(adj_matrix)
+            np.save("pubmed/pubmed_eigenvalue", w)
+            np.save("pubmed/pubmed_eigenvector", v)
         print("finished computing eigen vectors")
-        indices = np.argsort(w)
+        indices = np.argsort(w)[::n]
         feat_data = np.zeros((num_nodes, feature_dim))
         for i in range(num_nodes):
             for j in range(feature_dim):
-                feat_data[i, j] = v[i, j]
+                feat_data[i, j] = v[indices[i], j]
 
     return feat_data, labels, adj_lists
 
