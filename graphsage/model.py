@@ -23,16 +23,16 @@ Simple supervised GraphSAGE model as well as examples running the model
 on the Cora and Pubmed datasets.
 """
 
-class MulticlassClassificationLoss(ClassificationLoss):
-    def __init__(self, reduction=None):
-        super().__init__()
-        if reduction is not None:
-            self.loss = nn.CrossEntropyLoss(reduction=reduction)
-        else:
-            self.loss = nn.CrossEntropyLoss()
-
-    def _get_correct(self, outputs):
-        return torch.argmax(outputs, dim=1)
+# class MulticlassClassificationLoss(ClassificationLoss):
+#     def __init__(self, reduction=None):
+#         super().__init__()
+#         if reduction is not None:
+#             self.loss = nn.CrossEntropyLoss(reduction=reduction)
+#         else:
+#             self.loss = nn.CrossEntropyLoss()
+#
+#     def _get_correct(self, outputs):
+#         return torch.argmax(outputs, dim=1)
 
 
 
@@ -53,15 +53,17 @@ class SupervisedGraphSageClassify(nn.Module):
     def forward(self, nodes):
         embeds = self.enc(nodes)
         hidden1 = F.relu(self.fc1(embeds.t()))
-        return self.fc2(hidden1)
+        res= self.fc2(hidden1)
+        scores = self.weight.mm(res)
+        return scores.t()
         #
         # scores = self.weight.mm(embeds) # matrix multiplication
         # return scores.t() #transpose
 
     def loss(self, nodes, labels):
         scores = self.forward(nodes)
-        # return self.xent(scores, labels.squeeze()) # gold
-        return self.loss_func(labels.squeeze(),scores)
+        return self.xent(scores, labels.squeeze()) # gold
+        # return self.loss_func(labels.squeeze(),scores)
 
 class SupervisedGraphSage(nn.Module):
 
