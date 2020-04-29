@@ -173,6 +173,7 @@ def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=12
     num_classes_map = {"cora": 7, "pubmed": 3}
     enc1_num_samples_map = {"cora": 5, "pubmed": 10}
     enc2_num_samples_map = {"cora": 5, "pubmed": 25}
+    attribute_dim = {"cora": 1433}
 
     np.random.seed(seed)
     random.seed(seed)
@@ -199,7 +200,7 @@ def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=12
    # features.cuda()
 
     agg1 = MeanAggregator(features, cuda=True, feature_dim=feature_dim, num_nodes=num_nodes, initializer=initializer)
-    enc1 = Encoder(features, feature_dim, identity_dim, adj_lists, agg1, gcn=True, cuda=False, initializer=initializer)
+    enc1 = Encoder(features, feature_dim if initializer != "None" else attribute_dim[dataset], identity_dim, adj_lists, agg1, gcn=True, cuda=False, initializer=initializer)
     agg2 = MeanAggregator(lambda nodes : enc1(nodes).t(), num_nodes, cuda=False)
     enc2 = Encoder(lambda nodes : enc1(nodes).t(), enc1.embed_dim, 128, adj_lists, agg2,
             base_model=enc1, gcn=True, cuda=False)
@@ -243,7 +244,7 @@ def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=12
 
 def load_cora(feature_dim, initializer="None"):
     num_nodes = 2708
-    num_feats = feature_dim
+    num_feats = feature_dim if initializer != 'None' else 1433
     if initializer == "1hot":
         num_feats = num_nodes
     feat_data = np.zeros((num_nodes, num_feats))
@@ -254,7 +255,7 @@ def load_cora(feature_dim, initializer="None"):
         with open("cora/cora.content") as fp:
             for i,line in enumerate(fp):
                 info = line.strip().split()
-                feat_data[i,:] = map(float, info[1:-1])
+                feat_data[i,:] = list(map(float, info[1:-1]))
                 node_map[info[0]] = i
                 if not info[-1] in label_map:
                     label_map[info[-1]] = len(label_map)
@@ -453,7 +454,7 @@ def load_pubmed(feature_dim, initializer):
             feat_data[k, 0] = v
     elif initializer == "eigen_decomposition":
         try:
-            v = np.load("pubmed/pubmed_eigenvector.npy")
+            v = np.load("pubmed-data/pubmed_eigenvector.npy")
             print(v.shape)
         except:
             adj_matrix = nx.to_numpy_array(G)
@@ -462,7 +463,7 @@ def load_pubmed(feature_dim, initializer):
             indices = np.argsort(w)[::-1]
             v = v.transpose()[indices]
             # only save top 1000 eigenvectors
-            np.save("pubmed/pubmed_eigenvector", v[:1000])
+            np.save("pubmed-data/pubmed_eigenvector", v[:1000])
         print(v)
         feat_data = np.zeros((num_nodes, feature_dim))
         assert(feature_dim <= 1000)
