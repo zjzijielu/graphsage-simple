@@ -173,7 +173,7 @@ def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=12
     num_classes_map = {"cora": 7, "pubmed": 3}
     enc1_num_samples_map = {"cora": 5, "pubmed": 10}
     enc2_num_samples_map = {"cora": 5, "pubmed": 25}
-    attribute_dim = {"cora": 1433}
+    attribute_dim = {"cora": 1433, "pubmed": 500}
 
     np.random.seed(seed)
     random.seed(seed)
@@ -388,7 +388,7 @@ def run_cora(initializer, seed, epochs, batch_size=128, feature_dim=100, identit
 def load_pubmed(feature_dim, initializer):
     #hardcoded for simplicity...
     num_nodes = 19717
-    num_feats = feature_dim
+    num_feats = feature_dim if initializer != 'None' else 500
     if initializer == "1hot":
         num_feats = num_nodes
     feat_data = np.zeros((num_nodes, num_feats))
