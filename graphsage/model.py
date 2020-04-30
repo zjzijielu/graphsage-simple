@@ -428,7 +428,7 @@ def load_pubmed(feature_dim, initializer):
             G = nx.Graph()
             G.add_nodes_from(node_map.values())
         elif initializer == "deepwalk":
-            feat_data = extract_deepwalk_embeddings("pubmed/pubmed.embeddings", node_map)
+            feat_data = extract_deepwalk_embeddings("pubmed-data/pubmed.embeddings", node_map)
 
     adj_lists = defaultdict(set)
     with open("pubmed-data/Pubmed-Diabetes.DIRECTED.cites.tab") as fp:
