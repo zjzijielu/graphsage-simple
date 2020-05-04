@@ -445,8 +445,12 @@ def load_pubmed(feature_dim, initializer):
                 G.add_edge(paper2, paper1)
 
     if initializer == "node_degree":
+        # convert to 1hot representation
+        node_degrees = [len(v) for v in adj_lists.values()]
+        max_degree = max(node_degrees)
+        feat_data = np.zeros((num_nodes, max_degree+1))
         for k, v in adj_lists.items():
-            feat_data[k, 0] = len(v)
+            feat_data[k, len(v)] = 1
     elif initializer == "pagerank":
         feat_data = np.zeros((num_nodes, 1))
         pagerank = nx.pagerank(G)

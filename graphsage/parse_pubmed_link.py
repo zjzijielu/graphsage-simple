@@ -13,7 +13,7 @@ with open("pubmed-data/Pubmed-Diabetes.DIRECTED.cites.tab") as fp:
         fp.readline()
         for line in fp:
             info = line.strip().split("\t")
-            paper1 = node_map[info[1].split(":")[1]]
-            paper2 = node_map[info[-1].split(":")[1]]   
+            paper1 = info[1].split(":")[1]
+            paper2 = info[-1].split(":")[1]
             output.write(str(paper1) + " " + str(paper2) + "\n")
 
