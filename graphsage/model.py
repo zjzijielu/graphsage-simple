@@ -571,8 +571,9 @@ def run_enzyme(feature_dim,initializer):
 
             graph_nodes=graphs_data["graph_nodes"][i] #todo debug graph nodes, id map
             optimizer.zero_grad()
+            graph_label=graphs_data['graph_labels'][i]
             loss = graphsage.loss(graph_nodes,
-                                  Variable(torch.LongTensor(labels[i])))#todo, debug lables,
+                                  Variable(torch.LongTensor(graph_label)))#todo, debug lables,
             loss.backward()
             optimizer.step()
             end_time = time.time()
@@ -702,6 +703,7 @@ def run_pubmed():
     times = []
     for batch in range(200):
         batch_nodes = train[:1024]
+        t=type(batch_nodes)
         random.shuffle(train)
         start_time = time.time()
         optimizer.zero_grad()
@@ -718,31 +720,31 @@ def run_pubmed():
     print("Average batch time:", np.mean(times))
 
 def main():
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("--initializer", type=str, default="None",
-    #                     help="node feature initialiation method")
-    # parser.add_argument("--identity_dim", type=int, default=50,
-    #                     help="node embedding dimension")
-    # parser.add_argument("--feature_dim", type=int, default=100,
-    #                     help="node feature dimension")
-    # parser.add_argument("--seed", type=int, default="1",
-    #                     help="random seed for initialization")
-    # parser.add_argument("--epochs", type=int, default="5",
-    #                     help="random seed for initialization")
-    # parser.add_argument("--dataset", type=str, default="cora",
-    #                     help="dataset used")
-    # parser.add_argument("--classify", type=str, default="node",
-    #                     help="classify task")
-    #
-    # args = parser.parse_args()
-    #
-    # initializer = args.initializer
-    # identity_dim = args.identity_dim
-    # feature_dim = args.feature_dim
-    # seed = args.seed
-    # epochs = args.epochs
-    # dataset = args.dataset
-    # classify = args.classify
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--initializer", type=str, default="None",
+                        help="node feature initialiation method")
+    parser.add_argument("--identity_dim", type=int, default=50,
+                        help="node embedding dimension")
+    parser.add_argument("--feature_dim", type=int, default=100,
+                        help="node feature dimension")
+    parser.add_argument("--seed", type=int, default="1",
+                        help="random seed for initialization")
+    parser.add_argument("--epochs", type=int, default="5",
+                        help="random seed for initialization")
+    parser.add_argument("--dataset", type=str, default="cora",
+                        help="dataset used")
+    parser.add_argument("--classify", type=str, default="node",
+                        help="classify task")
+
+    args = parser.parse_args()
+
+    initializer = args.initializer
+    identity_dim = args.identity_dim
+    feature_dim = args.feature_dim
+    seed = args.seed
+    epochs = args.epochs
+    dataset = args.dataset
+    classify = args.classify
 
     run_enzyme(50,"1hot")
     #
