@@ -545,7 +545,7 @@ def run_enzyme(feature_dim,initializer):
     np.random.seed(1)
     random.seed(1)
     num_nodes = 19580
-    graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists=load_enzyme()
+    # graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists=load_enzyme()
     features = nn.Embedding(19580, 500)
     features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
     graph_nodes=graphs_data[""]
