@@ -434,7 +434,7 @@ def parse_tu_data(name, raw_dir):
             if edge[0] in adj_lists:
                 adj_lists[edge[0]].add(edge[1])
             else:
-                adj_lists[edge[0]]=[]
+                adj_lists[edge[0]]=set()
             edge_indicator.append(edge)
 
 
@@ -746,9 +746,9 @@ def main():
     dataset = args.dataset
     classify = args.classify
 
-    # run_enzyme(50,"1hot")
+    run_enzyme(50,"1hot")
     #
-    run_model(dataset, initializer, seed, epochs, classify=classify, feature_dim=feature_dim, identity_dim=identity_dim)
+    # run_model(dataset, initializer, seed, epochs, classify=classify, feature_dim=feature_dim, identity_dim=identity_dim)
 
 if __name__ == "__main__":
      main()
