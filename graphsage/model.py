@@ -518,7 +518,7 @@ def parse_tu_data(name, raw_dir):
 
 
 def load_enzyme(feature_dim, initializer):
-    num_nodes=19580
+    num_nodes=19474
     num_feats = feature_dim if initializer != 'None' else 500
     if initializer == "1hot":
         num_feats = num_nodes
@@ -546,9 +546,9 @@ def run_enzyme(feature_dim,initializer):
     graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists=load_enzyme(feature_dim,initializer)
     np.random.seed(1)
     random.seed(1)
-    num_nodes = 19580
+    num_nodes = 19474
     # graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists=load_enzyme()
-    features = nn.Embedding(19580, 500)
+    features = nn.Embedding(19474, 19474)
     features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
     graph_nodes=graphs_data["graph_nodes"]
 
@@ -748,6 +748,8 @@ def main():
 
     run_enzyme(50,"1hot")
     #
+
+
     # run_model(dataset, initializer, seed, epochs, classify=classify, feature_dim=feature_dim, identity_dim=identity_dim)
 
 if __name__ == "__main__":
