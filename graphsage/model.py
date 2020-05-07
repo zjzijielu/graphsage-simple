@@ -430,10 +430,11 @@ def parse_tu_data(name, raw_dir):
             line = line.rstrip("\n")
             edge = [int(e) for e in line.split(',')]
             if edge[0] in adj_lists:
-                adj_lists[edge[0]]=(edge[1])
+                adj_lists[edge[0]].append(edge[1])
             else:
                 adj_lists[edge[0]]=[]
             edge_indicator.append(edge)
+
 
             # edge[0] is a node id, and it is used to retrieve
             # the corresponding graph id to which it belongs to
@@ -441,7 +442,9 @@ def parse_tu_data(name, raw_dir):
             graph_id = indicator[edge[0]]
 
             graph_edges[graph_id].append(edge)
-
+        # t=adj_lists[2]
+        # u=adj_lists[3]
+        # s=1
     # if node_labels_path.exists():
     with open(node_labels_path, "r") as f:
         for i, line in enumerate(f.readlines(), 1):
