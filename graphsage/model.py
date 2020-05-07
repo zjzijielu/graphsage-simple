@@ -392,14 +392,21 @@ def run_cora(initializer, seed, epochs, batch_size=128, feature_dim=100, identit
 
 def parse_tu_data(name, raw_dir):
     # setup paths
-    indicator_path = raw_dir / name / f'{name}_graph_indicator.txt'
-    edges_path = raw_dir / name / f'{name}_A.txt'
-    graph_labels_path = raw_dir / name / f'{name}_graph_labels.txt'
-    node_labels_path = raw_dir / name / f'{name}_node_labels.txt'
-    edge_labels_path = raw_dir / name / f'{name}_edge_labels.txt'
-    node_attrs_path = raw_dir / name / f'{name}_node_attributes.txt'
-    edge_attrs_path = raw_dir / name / f'{name}_edge_attributes.txt'
+    # indicator_path = raw_dir / name / f'{name}_graph_indicator.txt'
+    # edges_path = raw_dir / name / f'{name}_A.txt'
+    # graph_labels_path = raw_dir / name / f'{name}_graph_labels.txt'
+    # node_labels_path = raw_dir / name / f'{name}_node_labels.txt'
+    # edge_labels_path = raw_dir / name / f'{name}_edge_labels.txt'
+    # node_attrs_path = raw_dir / name / f'{name}_node_attributes.txt'
+    # edge_attrs_path = raw_dir / name / f'{name}_edge_attributes.txt'
 
+    indicator_path = '../graph_data/ENZYMES_graph_indicator.txt'
+    edges_path = '../graph_data/ENZYMES_A.txt'
+    graph_labels_path ='../graph_data/ENZYMES_graph_labels.txt'
+    node_labels_path = '../graph_data/ENZYMES_node_labels.txt'
+    edge_labels_path = '../graph_data/ENZYMES_edge_labels.txt'
+    node_attrs_path = '../graph_data/ENZYMES_node_attributes.txt'
+    edge_attrs_path ='../graph_data/ENZYMES_edge_attributes.txt'
     unique_node_labels = set()
     unique_edge_labels = set()
 
@@ -422,7 +429,10 @@ def parse_tu_data(name, raw_dir):
         for i, line in enumerate(f.readlines(), 1):
             line = line.rstrip("\n")
             edge = [int(e) for e in line.split(',')]
-            adj_lists[edge[0]].append(edge[1])
+            if edge[0] in adj_lists:
+                adj_lists[edge[0]]=(edge[1])
+            else:
+                adj_lists[edge[0]]=[]
             edge_indicator.append(edge)
 
             # edge[0] is a node id, and it is used to retrieve
@@ -432,41 +442,41 @@ def parse_tu_data(name, raw_dir):
 
             graph_edges[graph_id].append(edge)
 
-    if node_labels_path.exists():
-        with open(node_labels_path, "r") as f:
-            for i, line in enumerate(f.readlines(), 1):
-                line = line.rstrip("\n")
-                node_label = int(line)
-                unique_node_labels.add(node_label)
-                graph_id = indicator[i]
-                node_labels[graph_id].append(node_label)
+    # if node_labels_path.exists():
+    with open(node_labels_path, "r") as f:
+        for i, line in enumerate(f.readlines(), 1):
+            line = line.rstrip("\n")
+            node_label = int(line)
+            unique_node_labels.add(node_label)
+            graph_id = indicator[i]
+            node_labels[graph_id].append(node_label)
 
-    if edge_labels_path.exists():
-        with open(edge_labels_path, "r") as f:
-            for i, line in enumerate(f.readlines(), 1):
-                line = line.rstrip("\n")
-                edge_label = int(line)
-                unique_edge_labels.add(edge_label)
-                graph_id = indicator[edge_indicator[i][0]]
-                edge_labels[graph_id].append(edge_label)
+    # if edge_labels_path.exists():
+    # with open(edge_labels_path, "r") as f:
+    #     for i, line in enumerate(f.readlines(), 1):
+    #         line = line.rstrip("\n")
+    #         edge_label = int(line)
+    #         unique_edge_labels.add(edge_label)
+    #         graph_id = indicator[edge_indicator[i][0]]
+    #         edge_labels[graph_id].append(edge_label)
 
-    if node_attrs_path.exists():
-        with open(node_attrs_path, "r") as f:
-            for i, line in enumerate(f.readlines(), 1):
-                line = line.rstrip("\n")
-                nums = line.split(",")
-                node_attr = np.array([float(n) for n in nums])
-                graph_id = indicator[i]
-                node_attrs[graph_id].append(node_attr)
+    # if node_attrs_path.exists():
+    with open(node_attrs_path, "r") as f:
+        for i, line in enumerate(f.readlines(), 1):
+            line = line.rstrip("\n")
+            nums = line.split(",")
+            node_attr = np.array([float(n) for n in nums])
+            graph_id = indicator[i]
+            node_attrs[graph_id].append(node_attr)
 
-    if edge_attrs_path.exists():
-        with open(edge_attrs_path, "r") as f:
-            for i, line in enumerate(f.readlines(), 1):
-                line = line.rstrip("\n")
-                nums = line.split(",")
-                edge_attr = np.array([float(n) for n in nums])
-                graph_id = indicator[edge_indicator[i][0]]
-                edge_attrs[graph_id].append(edge_attr)
+    # if edge_attrs_path.exists():
+    # with open(edge_attrs_path, "r") as f:
+    #     for i, line in enumerate(f.readlines(), 1):
+    #         line = line.rstrip("\n")
+    #         nums = line.split(",")
+    #         edge_attr = np.array([float(n) for n in nums])
+    #         graph_id = indicator[edge_indicator[i][0]]
+    #         edge_attrs[graph_id].append(edge_attr)
 
     # get graph labels
     graph_labels = []
@@ -527,8 +537,8 @@ def load_enzyme(feature_dim, initializer):
 
 #
 
-def run_enzyme():
-    graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists=load_enzyme()
+def run_enzyme(feature_dim,initializer):
+    graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists=load_enzyme(feature_dim,initializer)
     np.random.seed(1)
     random.seed(1)
     num_nodes = 19580
@@ -702,34 +712,35 @@ def run_pubmed():
     print("Average batch time:", np.mean(times))
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--initializer", type=str, default="None",
-                        help="node feature initialiation method")
-    parser.add_argument("--identity_dim", type=int, default=50,
-                        help="node embedding dimension")
-    parser.add_argument("--feature_dim", type=int, default=100,
-                        help="node feature dimension")
-    parser.add_argument("--seed", type=int, default="1",
-                        help="random seed for initialization")
-    parser.add_argument("--epochs", type=int, default="5",
-                        help="random seed for initialization")
-    parser.add_argument("--dataset", type=str, default="cora",
-                        help="dataset used")
-    parser.add_argument("--classify", type=str, default="node",
-                        help="classify task")
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("--initializer", type=str, default="None",
+    #                     help="node feature initialiation method")
+    # parser.add_argument("--identity_dim", type=int, default=50,
+    #                     help="node embedding dimension")
+    # parser.add_argument("--feature_dim", type=int, default=100,
+    #                     help="node feature dimension")
+    # parser.add_argument("--seed", type=int, default="1",
+    #                     help="random seed for initialization")
+    # parser.add_argument("--epochs", type=int, default="5",
+    #                     help="random seed for initialization")
+    # parser.add_argument("--dataset", type=str, default="cora",
+    #                     help="dataset used")
+    # parser.add_argument("--classify", type=str, default="node",
+    #                     help="classify task")
+    #
+    # args = parser.parse_args()
+    #
+    # initializer = args.initializer
+    # identity_dim = args.identity_dim
+    # feature_dim = args.feature_dim
+    # seed = args.seed
+    # epochs = args.epochs
+    # dataset = args.dataset
+    # classify = args.classify
 
-    args = parser.parse_args()
-
-    initializer = args.initializer
-    identity_dim = args.identity_dim
-    feature_dim = args.feature_dim
-    seed = args.seed
-    epochs = args.epochs
-    dataset = args.dataset
-    classify = args.classify
-
-
-    run_model(dataset, initializer, seed, epochs, classify=classify, feature_dim=feature_dim, identity_dim=identity_dim)
+    run_enzyme(50,"1hot")
+    #
+    # run_model(dataset, initializer, seed, epochs, classify=classify, feature_dim=feature_dim, identity_dim=identity_dim)
 
 if __name__ == "__main__":
      main()
