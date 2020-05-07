@@ -542,7 +542,7 @@ def load_enzyme(feature_dim, initializer):
 
 #
 
-def run_enzyme(feature_dim,initializer):
+def run_enzyme(feature_dim,initializer,identity_dim=50):
     graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists=load_enzyme(feature_dim,initializer)
     np.random.seed(1)
     random.seed(1)
@@ -552,9 +552,12 @@ def run_enzyme(feature_dim,initializer):
     features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
     graph_nodes=graphs_data["graph_nodes"]
 
-    agg1 = MeanAggregator(features, cuda=True)
-    enc1 = Encoder(features, 500, 128, adj_lists, agg1, gcn=True, cuda=False, initializer=initializer)
-    agg2 = MeanAggregator(lambda nodes: enc1(nodes).t(), cuda=False)
+
+
+    agg1 = MeanAggregator(features, cuda=True, feature_dim=feature_dim, num_nodes=num_nodes, initializer=initializer)
+    enc1 = Encoder(features, feature_dim, identity_dim, adj_lists,
+                   agg1, gcn=True, cuda=False, initializer=initializer)
+    agg2 = MeanAggregator(lambda nodes: enc1(nodes).t(), num_nodes, cuda=False)
     enc2 = Encoder(lambda nodes: enc1(nodes).t(), enc1.embed_dim, 128, adj_lists, agg2,
                    base_model=enc1, gcn=True, cuda=False)
     enc1.num_samples = 10
@@ -746,7 +749,7 @@ def main():
     dataset = args.dataset
     classify = args.classify
 
-    run_enzyme(50,"1hot")
+    run_enzyme(19474,"1hot")
     #
 
 
