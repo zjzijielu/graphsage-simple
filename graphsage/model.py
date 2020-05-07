@@ -558,7 +558,7 @@ def run_enzyme(feature_dim,initializer):
     enc2.num_samples = 25
     graphsage = SupervisedGraphSageClassify(6, enc2)#hardcode
     total=np.arange(600)
-    train=total[0:500]
+    train=total[1:500]
     val=total[500:550]
     test=total[550:600]
     optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, graphsage.parameters()), lr=0.7)
