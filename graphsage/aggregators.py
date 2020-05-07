@@ -44,9 +44,9 @@ class MeanAggregator(nn.Module):
             samp_neighs = [_set(_sample(to_neigh, 
                             num_sample,
                             )) if len(to_neigh) >= num_sample else to_neigh for to_neigh in to_neighs]
-            for t in samp_neighs:
-                t=set(t)
-            r=1
+            # for t in samp_neighs:
+            #     t=set(t)
+            # r=1
         else:
             samp_neighs = to_neighs
 
