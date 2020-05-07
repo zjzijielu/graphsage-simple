@@ -28,7 +28,7 @@ class SupervisedGraphSageClassify(nn.Module):
     # def __init__(self, num_classes, enc, dim_target):
     def __init__(self, num_classes, enc):
 
-        super(SupervisedGraphSage, self).__init__()
+        super(SupervisedGraphSageClassify, self).__init__()
         self.enc = enc
         self.xent = nn.CrossEntropyLoss()
         #num_classes: graph calsses
