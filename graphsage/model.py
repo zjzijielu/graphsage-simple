@@ -26,7 +26,7 @@ on the Cora and Pubmed datasets.
 class SupervisedGraphSageClassify(nn.Module):
 
     # def __init__(self, num_classes, enc, dim_target):
-    def __init__(self, num_classes, enc, dim_target):
+    def __init__(self, num_classes, enc):
 
         super(SupervisedGraphSage, self).__init__()
         self.enc = enc
@@ -551,6 +551,7 @@ def run_enzyme(feature_dim,initializer):
     features = nn.Embedding(19580, 500)
     features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
     graph_nodes=graphs_data["graph_nodes"]
+
     agg1 = MeanAggregator(features, cuda=True)
     enc1 = Encoder(features, 500, 128, adj_lists, agg1, gcn=True, cuda=False, initializer=initializer)
     agg2 = MeanAggregator(lambda nodes: enc1(nodes).t(), cuda=False)
