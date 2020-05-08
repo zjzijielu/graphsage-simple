@@ -42,7 +42,8 @@ class SupervisedGraphSageClassify(nn.Module):
     def forward(self, nodes):
         embeds = self.enc(nodes)
         #aggregate the embeddings
-        embeds=embeds.sum(0)
+        embeds=embeds.sum(1)
+        print(embeds)
         scores = self.weight.mm(embeds)
         return scores.t()
 
