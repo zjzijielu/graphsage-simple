@@ -574,7 +574,7 @@ def run_enzyme(feature_dim,initializer,identity_dim=50):
 
             graph_nodes=graphs_data["graph_nodes"][i] #todo debug graph nodes, id map
             optimizer.zero_grad()
-            graph_label=graphs_data['graph_labels'][i]
+            graph_label=np.array([graphs_data['graph_labels'][i]])
             loss = graphsage.loss(graph_nodes,
                                   Variable(torch.LongTensor(graph_label)))#todo, debug lables,
             loss.backward()
