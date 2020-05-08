@@ -511,15 +511,16 @@ def run_enzyme(feature_dim,initializer,identity_dim=50):
     # do not do batch, feed graph one at a time
     for epoch in range(1):#harcode: 10 epochs
         for i in train:
-        # for i in range(59,100):
+        # for i in range(295,296):
+            print (i)
             graph_nodes=graphs_data["graph_nodes"][i] #todo debug graph nodes, id map
 
             optimizer.zero_grad()
-            graph_label=np.array([graphs_data['graph_labels'][i]-1])
+            graph_label=np.array([graphs_data['graph_labels'][i]])
             # loss = graphsage.loss(graph_nodes,
             #                       Variable(torch.LongTensor(graph_label)))#todo, debug lables,
             # res=graphsage.forward(graph_nodes)
-
+            m=torch.LongTensor(graph_label)
             loss = graphsage.loss(graph_nodes,
                                   Variable(torch.LongTensor(graph_label)))#todo, debug lables,
 
@@ -538,7 +539,7 @@ def run_enzyme(feature_dim,initializer,identity_dim=50):
     # print("Average batch time:", np.mean(times))
     true_label=[]
     for t in val:
-        true_label.append(graphs_data['graph_labels'][t]-1)
+        true_label.append(graphs_data['graph_labels'][t])
     # lbs=graphs_data['graph_labels'][val]
     # true_label = graphs_data['graph_labels'][val] - [1]
     all_val_res=[]#the predicted
