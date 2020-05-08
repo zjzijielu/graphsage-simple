@@ -327,13 +327,20 @@ def parse_tu_data(name, raw_dir):
     # node_attrs_path = raw_dir / name / f'{name}_node_attributes.txt'
     # edge_attrs_path = raw_dir / name / f'{name}_edge_attributes.txt'
 
-    indicator_path = 'graph_data/ENZYMES_graph_indicator.txt'
-    edges_path = 'graph_data/ENZYMES_A.txt'
-    graph_labels_path ='graph_data/ENZYMES_graph_labels.txt'
-    node_labels_path = 'graph_data/ENZYMES_node_labels.txt'
-    edge_labels_path = 'graph_data/ENZYMES_edge_labels.txt'
-    node_attrs_path = 'graph_data/ENZYMES_node_attributes.txt'
-    edge_attrs_path ='graph_data/ENZYMES_edge_attributes.txt'
+    # indicator_path = 'graph_data/ENZYMES_graph_indicator.txt'
+    # edges_path = 'graph_data/ENZYMES_A.txt'
+    # graph_labels_path ='graph_data/ENZYMES_graph_labels.txt'
+    # node_labels_path = 'graph_data/ENZYMES_node_labels.txt'
+    # edge_labels_path = 'graph_data/ENZYMES_edge_labels.txt'
+    # node_attrs_path = 'graph_data/ENZYMES_node_attributes.txt'
+    # edge_attrs_path ='graph_data/ENZYMES_edge_attributes.txt'
+    indicator_path = '../graph_data/ENZYMES_graph_indicator.txt'
+    edges_path = '../graph_data/ENZYMES_A.txt'
+    graph_labels_path ='../graph_data/ENZYMES_graph_labels.txt'
+    node_labels_path = '../graph_data/ENZYMES_node_labels.txt'
+    edge_labels_path = '../graph_data/ENZYMES_edge_labels.txt'
+    node_attrs_path = '../graph_data/ENZYMES_node_attributes.txt'
+    edge_attrs_path ='../graph_data/ENZYMES_edge_attributes.txt'
     unique_node_labels = set()
     unique_edge_labels = set()
 
@@ -488,17 +495,18 @@ def run_enzyme(feature_dim,initializer,identity_dim=50):
     enc1.num_samples = 10
     enc2.num_samples = 25
     graphsage = SupervisedGraphSageClassify(6, enc2)#hardcode
-    filtered = [1,2,3,4,5,6,7,9,10,11,12,13,14,15,17,18,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,
-                37,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,
-                68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99]
+    # filtered = [1,2,3,4,5,6,7,9,10,11,12,13,14,15,17,18,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,
+    #             37,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,
+    #             68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99]
     total=np.arange(600)
+    random.shuffle(total)
     ##################### whole, some graph returns nan embedding #####################
-    # train=total[1:500]
-    # val=total[500:550]
-    # test=total[550:600]
+    train=total[1:500]
+    val=total[500:550]
+    test=total[550:600]
     ##################### filtered #####################
-    train=filtered[0:9]
-    val=filtered[10:15]
+    # train=filtered[0:9]
+    # val=filtered[10:15]
     optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, graphsage.parameters()), lr=0.1)
     # do not do batch, feed graph one at a time
     for epoch in range(1):#harcode: 10 epochs
@@ -521,13 +529,29 @@ def run_enzyme(feature_dim,initializer,identity_dim=50):
             print(i, loss)
 
 
-    val_output = graphsage.forward(val)
-    res=val_output.data.numpy().argmax(axis=1)
-    true_label=graphs_data['graph_labels'][val]-1
-    # print("Validation F1:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro"))
-    print("Validation F1:", f1_score(graphs_data['graph_labels'][val]-1, val_output.data.numpy().argmax(axis=1), average="micro"))
+    # val_output = graphsage.forward(val)
+    # res=val_output.data.numpy().argmax(axis=1)
+    # true_label=graphs_data['graph_labels'][val]-1
+    # # print("Validation F1:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro"))
+    # print("Validation F1:", f1_score(graphs_data['graph_labels'][val]-1, val_output.data.numpy().argmax(axis=1), average="micro"))
+    #
+    # print("Average batch time:", np.mean(times))
+    true_label=[]
+    for t in val:
+        true_label.append(graphs_data['graph_labels'][t]-1)
+    # lbs=graphs_data['graph_labels'][val]
+    # true_label = graphs_data['graph_labels'][val] - [1]
+    all_val_res=[]#the predicted
+    for v in val:
+        val_output = graphsage.forward(graphs_data["graph_nodes"][v])
+        res=val_output.data.numpy().argmax(axis=1)
+        all_val_res.append(res[0])
 
-    print("Average batch time:", np.mean(times))
+
+    # print("Validation F1:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro"))
+    print("Validation F1:", f1_score(true_label, all_val_res, average="micro"))
+
+    # print("Average batch time:", np.mean(times))
 
 
 
