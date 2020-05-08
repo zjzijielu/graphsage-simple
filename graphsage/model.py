@@ -575,9 +575,9 @@ def run_enzyme(feature_dim,initializer,identity_dim=50):
     test=total[550:600]
     optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, graphsage.parameters()), lr=0.1)
     # do not do batch, feed graph one at a time
-    for epoch in range(10):#harcode: 10 epochs
+    for epoch in range(20):#harcode: 10 epochs
         # for i in train:
-        for i in range(12,13):
+        for i in range(14,15):
             graph_nodes=graphs_data["graph_nodes"][i] #todo debug graph nodes, id map
             optimizer.zero_grad()
             graph_label=np.array([graphs_data['graph_labels'][i]-1])
