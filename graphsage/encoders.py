@@ -3,17 +3,17 @@ import torch.nn as nn
 from torch.nn import init
 import torch.nn.functional as F
 
-import numpy as np 
+import numpy as np
 
 class Encoder(nn.Module):
     """
     Encodes a node's using 'convolutional' GraphSage approach
     """
-    def __init__(self, features, feature_dim, 
+    def __init__(self, features, feature_dim,
             embed_dim, adj_lists, aggregator,
             num_sample=10, initializer="None",
-            base_model=None, gcn=False, cuda=False, 
-            feature_transform=False): 
+            base_model=None, gcn=False, cuda=False,
+            feature_transform=False):
         super(Encoder, self).__init__()
 
         self.features = features
@@ -30,7 +30,7 @@ class Encoder(nn.Module):
         self.aggregator.cuda = cuda
         self.weight = nn.Parameter(
                 torch.FloatTensor(embed_dim, self.feat_dim if self.gcn else 2 * self.feat_dim))
-        
+
         self.initializer = initializer
 
         init.xavier_uniform(self.weight)
@@ -43,9 +43,9 @@ class Encoder(nn.Module):
 
         nodes     -- list of nodes
         """
-
-        neigh_feats = self.aggregator.forward(nodes, [self.adj_lists[int(node)] for node in nodes], 
+        neigh_feats = self.aggregator.forward(nodes, [self.adj_lists[int(node)] for node in nodes],
                 self.num_sample, initializer=self.initializer)
+        # print("neigh_feats:", neigh_feats)
         if not self.gcn:
             if self.cuda:
                 self_feats = self.features(torch.LongTensor(nodes).cuda())
@@ -57,6 +57,6 @@ class Encoder(nn.Module):
 
         if self.initializer in ["node_degree", "shared", "pagerank"]:
             combined = F.sigmoid(self.weight.mm(combined.t()))
-        else: 
+        else:
             combined = F.relu(self.weight.mm(combined.t()))
         return combined
