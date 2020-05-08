@@ -35,7 +35,7 @@ class SupervisedGraphSageClassify(nn.Module):
         self.weight = nn.Parameter(torch.FloatTensor(num_classes, enc.embed_dim))
 
         # self.fc1 = nn.Linear(2 * enc.embed_dim, enc.embed_dim)
-        self.fc2 = nn.Linear(enc.embed_dim, 6)
+        self.fc2 = nn.Linear(enc.embed_dim, 6)#harcode for enzyme, 6 classes
 
         init.xavier_uniform(self.weight)
 
@@ -576,9 +576,10 @@ def run_enzyme(feature_dim,initializer,identity_dim=50):
     optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, graphsage.parameters()), lr=0.1)
     # do not do batch, feed graph one at a time
     for epoch in range(20):#harcode: 10 epochs
-        # for i in train:
-        for i in range(14,15):
+        for i in train:
+        # for i in range(8,9):
             graph_nodes=graphs_data["graph_nodes"][i] #todo debug graph nodes, id map
+
             optimizer.zero_grad()
             graph_label=np.array([graphs_data['graph_labels'][i]-1])
             # loss = graphsage.loss(graph_nodes,
