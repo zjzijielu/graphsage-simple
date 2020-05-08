@@ -48,7 +48,7 @@ class SupervisedGraphSageClassify(nn.Module):
         embeds=embeds.view(128,1)
         # print(embeds)
         
-        scores = torch.sigmoid(self.weight.mm(embeds))
+        scores = self.weight.mm(embeds)
         # scores=torch.sigmoid(self.fc2(embeds.t()))
         return scores.t()
 
