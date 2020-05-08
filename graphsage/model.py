@@ -63,7 +63,9 @@ class SupervisedGraphSageClassify(nn.Module):
 
     #feed a single graph label at a time
     def loss(self, nodes, labels):
-        scores = self.forward(nodes)
+        scores = self.forward(nodes).t()
+        t=labels
+
         return self.xent(scores, labels.squeeze())
 
 class SupervisedGraphSage(nn.Module):
