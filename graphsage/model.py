@@ -55,7 +55,7 @@ class SupervisedGraphSageClassify(nn.Module):
         # d=c.shape
         res=rhs.mm(lhs)
 
-        print(embeds)
+        # print(embeds)
         scores = self.weight.mm(embeds)
 
         return scores.t()
@@ -599,7 +599,7 @@ def run_enzyme(feature_dim,initializer,identity_dim=50):
             loss.backward()
             optimizer.step()
             end_time = time.time()
-            print(i, loss.data[0])
+            print(i, loss)
 
     val_output = graphsage.forward(val)
 
@@ -679,7 +679,7 @@ def load_pubmed(feature_dim, initializer):
     elif initializer == "eigen_decomposition":
         try:
             v = np.load("pubmed-data/pubmed_eigenvector.npy")
-            print(v.shape)
+            # print(v.shape)
         except:
             adj_matrix = nx.to_numpy_array(G)
             print("start computing eigen vectors")
