@@ -35,29 +35,19 @@ class SupervisedGraphSageClassify(nn.Module):
         self.weight = nn.Parameter(torch.FloatTensor(num_classes, enc.embed_dim))
 
         # self.fc1 = nn.Linear(2 * enc.embed_dim, enc.embed_dim)
-        # self.fc2 = nn.Linear(enc.embed_dim, dim_target)
+        self.fc2 = nn.Linear(enc.embed_dim, 6)
 
         init.xavier_uniform(self.weight)
 
     def forward(self, nodes):
         embeds = self.enc(nodes)
         #aggregate the embeddings
-        embeds=embeds.sum(1)
-        m=embeds.size()
+        # embeds=embeds.sum(1)
+        embeds=torch.mean(embeds,1)
         embeds=embeds.view(128,1)
-        n=embeds.size()
-
-        lhs=embeds
-        rhs=self.weight
-        a= lhs.shape
-        # c=a.t()
-        b= rhs.shape
-        # d=c.shape
-        res=rhs.mm(lhs)
-
         # print(embeds)
-        scores = self.weight.mm(embeds)
-
+        scores = torch.sigmoid(self.weight.mm(embeds))
+        # scores=torch.sigmoid(self.fc2(embeds.t()))
         return scores.t()
 
 
@@ -583,16 +573,18 @@ def run_enzyme(feature_dim,initializer,identity_dim=50):
     train=total[1:500]
     val=total[500:550]
     test=total[550:600]
-    optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, graphsage.parameters()), lr=0.7)
+    optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, graphsage.parameters()), lr=0.1)
     # do not do batch, feed graph one at a time
     for epoch in range(10):#harcode: 10 epochs
-        for i in train:
-
+        # for i in train:
+        for i in range(12,13):
             graph_nodes=graphs_data["graph_nodes"][i] #todo debug graph nodes, id map
             optimizer.zero_grad()
-            graph_label=np.array([graphs_data['graph_labels'][i]])
+            graph_label=np.array([graphs_data['graph_labels'][i]-1])
             # loss = graphsage.loss(graph_nodes,
             #                       Variable(torch.LongTensor(graph_label)))#todo, debug lables,
+            res=graphsage.forward(graph_nodes)
+
             loss = graphsage.loss(graph_nodes,
                                   Variable(torch.LongTensor(graph_label)))#todo, debug lables,
 
@@ -600,6 +592,7 @@ def run_enzyme(feature_dim,initializer,identity_dim=50):
             optimizer.step()
             end_time = time.time()
             print(i, loss)
+
 
     val_output = graphsage.forward(val)
 
@@ -721,7 +714,7 @@ def run_pubmed():
     val = rand_indices[1000:1500]
     train = list(rand_indices[1500:])
 
-    optimizer = torch.optim.SGD(filter(lambda p : p.requires_grad, graphsage.parameters()), lr=0.7)
+    optimizer = torch.optim.SGD(filter(lambda p : p.requires_grad, graphsage.parameters()), lr=0.0001)
     times = []
     for batch in range(200):
         batch_nodes = train[:1024]
@@ -729,7 +722,7 @@ def run_pubmed():
         random.shuffle(train)
         start_time = time.time()
         optimizer.zero_grad()
-        loss = graphsage.loss(batch_nodes, 
+        loss = graphsage.loss(batch_nodes,
                 Variable(torch.LongTensor(labels[np.array(batch_nodes)])))
         loss.backward()
         optimizer.step()
