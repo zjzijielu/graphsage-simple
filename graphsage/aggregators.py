@@ -45,6 +45,7 @@ class MeanAggregator(nn.Module):
         # print("nodes:", nodes)
 
         # Local pointers to functions (speed hack)
+        # print(to_neighs)
         _set = set
         if not num_sample is None:
             _sample = random.sample
@@ -57,9 +58,11 @@ class MeanAggregator(nn.Module):
         else:
             samp_neighs = to_neighs
         
-       
+        # print(nodes)
+        # print(samp_neighs)
         if self.gcn:
             samp_neighs = [samp_neigh + set([nodes[i]]) for i, samp_neigh in enumerate(samp_neighs)]
+        # print(samp_neighs)
         unique_nodes_list = list(set.union(*samp_neighs))
         unique_nodes = {n:i for i,n in enumerate(unique_nodes_list)}
         mask = Variable(torch.zeros(len(samp_neighs), len(unique_nodes)))

@@ -368,7 +368,7 @@ def parse_tu_data(name, raw_dir):
             if edge[0] in adj_lists:
                 adj_lists[edge[0]].add(edge[1])
             else:
-                adj_lists[edge[0]] = set()
+                adj_lists[edge[0]] = set([edge[1]])
             edge_indicator.append(edge)
 
             # edge[0] is a node id, and it is used to retrieve
@@ -497,12 +497,12 @@ def run_enzyme(feature_dim, initializer, identity_dim=50):
     # filtered = [1,2,3,4,5,6,7,9,10,11,12,13,14,15,17,18,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,
     #             37,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,
     #             68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99]
-    total = np.arange(600)
+    total = np.arange(1, 600)
     random.shuffle(total)
     ##################### whole, some graph returns nan embedding #####################
-    train = total[1:500]
+    train = total[0:500]
     val = total[500:550]
-    test = total[550:600]
+    test = total[550:-1]
     ##################### filtered #####################
     # train=filtered[0:9]
     # val=filtered[10:15]
@@ -510,13 +510,12 @@ def run_enzyme(feature_dim, initializer, identity_dim=50):
     # do not do batch, feed graph one at a time
     samp = 1
     
-    error_nodes = set([38, 0 , 19])
+    # error_nodes = set([38, 0 , 19])
 
-    for epoch in range(2):  # harcode: 10 epochs
+    for epoch in range(3):  # harcode: 10 epochs
         for i in train:
-            if i in error_nodes:
-                continue
-        # for i in range(38, 39):
+        #     if i in error_nodes:
+        #         continue
             try:
                 samp = samp + 1
                 # for i in range(295,296):
@@ -533,14 +532,15 @@ def run_enzyme(feature_dim, initializer, identity_dim=50):
                 loss = graphsage.loss(graph_nodes,
                                     Variable(torch.LongTensor(graph_label)))  # todo, debug lables,
 
+                if (i == 10):
+                    print(i, loss)
                 loss.backward()
                 optimizer.step()
                 end_time = time.time()
             except:
                 print(i)
-                error_nodes.append(i)
-            if (i == 124):
-                print(i, loss.data[0])
+                exit()
+            
     
     print("error_nodes:", error_nodes)
     # val_output = graphsage.forward(val)
