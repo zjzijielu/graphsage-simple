@@ -43,9 +43,12 @@ class SupervisedGraphSageClassify(nn.Module):
         embeds = self.enc(nodes)
         #aggregate the embeddings
         # embeds=embeds.sum(1)
+        print(embeds)
+        exit()
         embeds=torch.mean(embeds,1)
         embeds=embeds.view(128,1)
         # print(embeds)
+        
         scores = torch.sigmoid(self.weight.mm(embeds))
         # scores=torch.sigmoid(self.fc2(embeds.t()))
         return scores.t()
@@ -53,6 +56,8 @@ class SupervisedGraphSageClassify(nn.Module):
 
     #feed a single graph label at a time
     def loss(self, nodes, labels):
+        print(nodes)
+        # exit()
         scores = self.forward(nodes)
         # t=labels
         # s=self.xent(scores, labels.squeeze())
@@ -90,91 +95,6 @@ def extract_deepwalk_embeddings(filename, node_map):
             
     return feat_data
 
-'''
-def load_data(dataset, identity_dim, initializer="None"):
-   
-    label_file_path = {"cora": "cora/cora.content", "pubmed": "pubmed-data/Pubmed-Diabetes.NODE.paper.tab"}
-    edge_file_path = {"cora": "cora/cora.cites", "pubmed": "pubmed-data/Pubmed-Diabetes.DIRECTED.cites.tab"}
-    deepwalk_embedding_file_path = {"cora": "cora/cora.embeddings"}
-
-    num_nodes = dataset_map[dataset]
-    num_classes = num_classes_map[dataset]
-    label_file = label_file_path[dataset]
-    edge_file = edge_file_path[dataset]
-    num_feats = identity_dim
-    if initializer == "1hot":
-        num_feats = num_nodes
-    
-    feat_data = np.zeros((num_nodes, num_feats))
-    labels = np.empty((num_nodes,1), dtype=np.int64)
-    node_map = {}
-    label_map = {}
-
-    if initializer == "None":
-        with open(label_file) as fp:
-            for i,line in enumerate(fp):
-                info = line.strip().split()
-                feat_data[i,:] = map(float, info[1:-1])
-                node_map[info[0]] = i
-                if not info[-1] in label_map:
-                    label_map[info[-1]] = len(label_map)
-                labels[i] = label_map[info[-1]]
-    else:
-        print("Initializing with", initializer)
-        with open("cora/cora.content") as fp:
-            for i, line in enumerate(fp):
-                info = line.strip().split()
-                node_map[info[0]] = i
-                if not info[-1] in label_map:
-                    label_map[info[-1]] = len(label_map)
-                labels[i] = label_map[info[-1]]
-        # set initializer method
-        if initializer == "1hot":
-            feat_data = np.eye(num_nodes)
-        elif initializer == "random_normal":
-            feat_data = np.random.normal(0, 1, (num_nodes, identity_dim))
-        elif initializer == "shared":
-            feat_data = np.ones((num_nodes, identity_dim))
-        elif initializer == "node_degree":
-            feat_data = np.zeros((num_nodes, 1))
-        elif initializer == "pagerank" or initializer == "eigen_decomposition":
-            G = nx.Graph()
-            G.add_nodes_from(node_map.values())
-        elif initializer == "deepwalk":
-            deepwalk_embedding_file = deepwalk_embedding_file_path[dataset]
-            feat_data = extract_deepwalk_embeddings(deepwalk_embedding_file, node_map)
-
-    adj_lists = defaultdict(set)
-    with open(edge_file) as fp:
-        for i,line in enumerate(fp):
-            info = line.strip().split()
-            paper1 = node_map[info[0]]
-            paper2 = node_map[info[1]]
-            adj_lists[paper1].add(paper2)
-            adj_lists[paper2].add(paper1)
-            if initializer == "pagerank" or initializer == "eigen_decomposition":
-                G.add_edge(paper1, paper2)
-                G.add_edge(paper2, paper1)
-
-    if initializer == "node_degree":
-        for k, v in adj_lists.items():
-            feat_data[k, 0] = len(v)
-    elif initializer == "pagerank":
-        feat_data = np.zeros((num_nodes, 1))
-        pagerank = nx.pagerank(G)
-        for k, v in pagerank.items():
-            feat_data[k, 0] = v
-    elif initializer == "eigen_decomposition":
-        adj_matrix = nx.to_numpy_array(G)
-        w, v = LA.eig(adj_matrix)
-        indices = np.argsort(w)
-        feat_data = np.zeros((num_nodes, identity_dim))
-        for i in range(num_nodes):
-            for j in range(identity_dim):
-                feat_data[i, j] = v[i, j]
-    
-    return feat_data, labels, adj_lists, num_nodes, num_classes
-'''
 
 def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=128, feature_dim=100, identity_dim=50):
     # merge run_cora and run_pubmed
@@ -408,13 +328,13 @@ def parse_tu_data(name, raw_dir):
     # node_attrs_path = raw_dir / name / f'{name}_node_attributes.txt'
     # edge_attrs_path = raw_dir / name / f'{name}_edge_attributes.txt'
 
-    indicator_path = '../graph_data/ENZYMES_graph_indicator.txt'
-    edges_path = '../graph_data/ENZYMES_A.txt'
-    graph_labels_path ='../graph_data/ENZYMES_graph_labels.txt'
-    node_labels_path = '../graph_data/ENZYMES_node_labels.txt'
-    edge_labels_path = '../graph_data/ENZYMES_edge_labels.txt'
-    node_attrs_path = '../graph_data/ENZYMES_node_attributes.txt'
-    edge_attrs_path ='../graph_data/ENZYMES_edge_attributes.txt'
+    indicator_path = 'graph_data/ENZYMES_graph_indicator.txt'
+    edges_path = 'graph_data/ENZYMES_A.txt'
+    graph_labels_path ='graph_data/ENZYMES_graph_labels.txt'
+    node_labels_path = 'graph_data/ENZYMES_node_labels.txt'
+    edge_labels_path = 'graph_data/ENZYMES_edge_labels.txt'
+    node_attrs_path = 'graph_data/ENZYMES_node_attributes.txt'
+    edge_attrs_path ='graph_data/ENZYMES_edge_attributes.txt'
     unique_node_labels = set()
     unique_edge_labels = set()
 
@@ -576,15 +496,15 @@ def run_enzyme(feature_dim,initializer,identity_dim=50):
     optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, graphsage.parameters()), lr=0.1)
     # do not do batch, feed graph one at a time
     for epoch in range(20):#harcode: 10 epochs
-        for i in train:
-        # for i in range(8,9):
+        # for i in train:
+        for i in range(8,9):
             graph_nodes=graphs_data["graph_nodes"][i] #todo debug graph nodes, id map
 
             optimizer.zero_grad()
             graph_label=np.array([graphs_data['graph_labels'][i]-1])
             # loss = graphsage.loss(graph_nodes,
             #                       Variable(torch.LongTensor(graph_label)))#todo, debug lables,
-            res=graphsage.forward(graph_nodes)
+            # res=graphsage.forward(graph_nodes)
 
             loss = graphsage.loss(graph_nodes,
                                   Variable(torch.LongTensor(graph_label)))#todo, debug lables,
