@@ -509,10 +509,13 @@ def run_enzyme(feature_dim,initializer,identity_dim=50):
     # val=filtered[10:15]
     optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, graphsage.parameters()), lr=0.1)
     # do not do batch, feed graph one at a time
+    samp=1
     for epoch in range(1):#harcode: 10 epochs
         for i in train:
+            samp=samp+1
         # for i in range(295,296):
-            print (i)
+            print(str(samp)+"===="+str(i))
+
             graph_nodes=graphs_data["graph_nodes"][i] #todo debug graph nodes, id map
 
             optimizer.zero_grad()
