@@ -85,6 +85,96 @@ def extract_deepwalk_embeddings(filename, node_map, dataset="cora"):
             
     return feat_data
 
+def load_usa_airport(feature_dim, initializer="None"):
+    '''
+    hardcoded for simplicity
+    '''
+    num_nodes = 1190
+    num_feats = feature_dim if initializer != 'None' else 1433
+    if initializer == "1hot":
+        num_feats = num_nodes
+    feat_data = np.zeros((num_nodes, num_feats))
+    labels = np.empty((num_nodes,1), dtype=np.int64)
+    node_map = {}
+    label_map = {}
+    if initializer == "None":
+        with open("graph/cora.content") as fp:
+            for i,line in enumerate(fp):
+                info = line.strip().split()
+                feat_data[i,:] = list(map(float, info[1:-1]))
+                node_map[info[0]] = i
+                if not info[-1] in label_map:
+                    label_map[info[-1]] = len(label_map)
+                labels[i] = label_map[info[-1]]
+    else:
+        print("Initializing with", initializer)
+        with open("cora/cora.content") as fp:
+            for i, line in enumerate(fp):
+                info = line.strip().split()
+                node_map[info[0]] = i
+                if not info[-1] in label_map:
+                    label_map[info[-1]] = len(label_map)
+                labels[i] = label_map[info[-1]]
+        # set initializer method
+        if initializer == "1hot":
+            feat_data = np.eye(num_nodes)
+        elif initializer == "random_normal":
+            feat_data = np.random.normal(0, 1, (num_nodes, feature_dim))
+        elif initializer == "shared":
+            feat_data = np.ones((num_nodes, feature_dim))
+        elif initializer == "node_degree":
+            feat_data = np.zeros((num_nodes, 1))
+        elif initializer == "pagerank" or initializer == "eigen_decomposition":
+            G = nx.Graph()
+            G.add_nodes_from(node_map.values())
+        elif initializer == "deepwalk":
+            feat_data = extract_deepwalk_embeddings("cora/cora.embeddings", node_map)
+
+    adj_lists = defaultdict(set)
+    with open("cora/cora.cites") as fp:
+        for i,line in enumerate(fp):
+            info = line.strip().split()
+            paper1 = node_map[info[0]]
+            paper2 = node_map[info[1]]
+            adj_lists[paper1].add(paper2)
+            adj_lists[paper2].add(paper1)
+            if initializer == "pagerank" or initializer == "eigen_decomposition":
+                G.add_edge(paper1, paper2)
+                G.add_edge(paper2, paper1)
+
+    if initializer == "node_degree":
+        # convert to 1hot representation
+        node_degrees = [len(v) for v in adj_lists.values()]
+        max_degree = max(node_degrees)
+        feat_data = np.zeros((num_nodes, max_degree+1))
+        for k, v in adj_lists.items():
+            feat_data[k, len(v)] = 1
+    elif initializer == "pagerank":
+        feat_data = np.zeros((num_nodes, 1))
+        pagerank = nx.pagerank(G)
+        for k, v in pagerank.items():
+            feat_data[k, 0] = v
+    elif initializer == "eigen_decomposition":
+        try:
+            v = np.load("cora/cora_eigenvector.npy")
+            print(v.shape)
+        except:
+            adj_matrix = nx.to_numpy_array(G)
+            print("start computing eigen vectors")
+            w, v = LA.eig(adj_matrix)
+            indices = np.argsort(w)[::-1]
+            v = v.transpose()[indices]
+            # only save top 1000 eigenvectors
+            np.save("cora/cora_eigenvector", v[:1000])
+        print(v)
+        feat_data = np.zeros((num_nodes, feature_dim))
+        assert(feature_dim <= 1000)
+        for i in range(num_nodes):
+            for j in range(feature_dim):
+                feat_data[i, j] = v[j, i]
+
+    return feat_data, labels, adj_lists
+
 def load_citeseer(feature_dim, initializer="None"):
     '''
     hard coded for simplicity
@@ -203,6 +293,8 @@ def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=12
         feat_data, labels, adj_lists = load_pubmed(feature_dim, initializer)
     elif dataset == "citeseer":
         feat_data, labels, adj_lists = load_citeseer(feature_dim, initializer)
+    elif dataset == "usa-airport":
+        feat_data, labels, adj_lists = load_usa_airport(feature_dim, initializer)
 
     # feat_data, labels, adj_lists = load_data(dataset, feature_dim, initializer)
     print(feat_data)
