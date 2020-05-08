@@ -620,7 +620,7 @@ def run_enzyme(feature_dim,initializer,identity_dim=50):
     # print("Validation F1:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro"))
     print("Validation F1:", f1_score(true_label, all_val_res, average="micro"))
 
-    print("Average batch time:", np.mean(times))
+    # print("Average batch time:", np.mean(times))
 
 
 
