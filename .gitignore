@@ -117,3 +117,5 @@ deepwalk/
 # eigen vectors
 *.npy
 
+# struct data
+struc2vec
