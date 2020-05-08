@@ -43,8 +43,9 @@ class SupervisedGraphSageClassify(nn.Module):
         embeds = self.enc(nodes)
         #aggregate the embeddings
         embeds=embeds.sum(1)
+        m=embeds.size()
         embeds=embeds.view(embeds.shape,1)
-
+        n=embeds.size()
 
         lhs=embeds
         rhs=self.weight
