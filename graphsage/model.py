@@ -65,8 +65,8 @@ class SupervisedGraphSageClassify(nn.Module):
     def loss(self, nodes, labels):
         scores = self.forward(nodes)
         # t=labels
-        s=self.xent(scores, labels.squeeze())
-        return self.xent(scores, labels.squeeze())
+        # s=self.xent(scores, labels.squeeze())
+        return self.xent(scores, labels)
 
 class SupervisedGraphSage(nn.Module):
 
