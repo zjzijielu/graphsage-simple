@@ -37,6 +37,13 @@ class MeanAggregator(nn.Module):
         to_neighs --- list of sets, each set is the set of neighbors for node in batch
         num_sample --- number of neighbors to sample. No sampling if None.
         """
+        # try:
+        #     if self.embed:
+        #         print("in aggregator 1")
+        # except:
+        #     print("in aggregator 2")
+        # print("nodes:", nodes)
+
         # Local pointers to functions (speed hack)
         _set = set
         if not num_sample is None:
@@ -49,7 +56,8 @@ class MeanAggregator(nn.Module):
             # r=1
         else:
             samp_neighs = to_neighs
-
+        
+       
         if self.gcn:
             samp_neighs = [samp_neigh + set([nodes[i]]) for i, samp_neigh in enumerate(samp_neighs)]
         unique_nodes_list = list(set.union(*samp_neighs))
@@ -61,19 +69,24 @@ class MeanAggregator(nn.Module):
         if self.cuda:
             mask = mask.cuda()
         num_neigh = mask.sum(1, keepdim=True)
-        mask = mask.div(num_neigh)
+        # print("num_neigh:", num_neigh.size(), "mask: ", mask.size())
+        for i in range(mask.size(0)):
+            if num_neigh[i, 0] != 0:
+                mask[i] = mask[i].div(num_neigh[i])
+        # mask = mask.div(num_neigh)
         if self.cuda:
             embed_matrix = self.features(torch.LongTensor(unique_nodes_list).cuda())
         else:
             embed_matrix = self.features(torch.LongTensor(unique_nodes_list))
         # print("embed_matrix has shape", embed_matrix.shape)
-        # print embed_matrix
         if initializer in ["1hot", "node_degree"]:
             indices = [np.where(a == 1)[0][0] for a in embed_matrix]
             indices = torch.LongTensor(indices)
             embed_matrix = self.embed(indices)
             # print embed_matrix.shape
-            
+        # print("embed_matrix:", embed_matrix)
+        # print("mask:", mask)
         to_feats = mask.mm(embed_matrix)
+        # print("to_feats:", to_feats)
         # print "to_feat has shape", to_feats.shape
         return to_feats

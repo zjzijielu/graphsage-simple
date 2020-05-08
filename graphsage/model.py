@@ -43,8 +43,7 @@ class SupervisedGraphSageClassify(nn.Module):
         embeds = self.enc(nodes)
         #aggregate the embeddings
         # embeds=embeds.sum(1)
-        print(embeds)
-        exit()
+        # exit()
         embeds=torch.mean(embeds,1)
         embeds=embeds.view(128,1)
         # print(embeds)
