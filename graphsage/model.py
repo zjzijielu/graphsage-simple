@@ -15,6 +15,8 @@ from graphsage.aggregators import MeanAggregator
 import argparse
 import networkx as nx
 from numpy import linalg as LA
+import os.path
+from os import path
 
 import torch.nn.functional as F
 
@@ -328,13 +330,13 @@ def parse_tu_data(name, raw_dir):
     # node_attrs_path = raw_dir / name / f'{name}_node_attributes.txt'
     # edge_attrs_path = raw_dir / name / f'{name}_edge_attributes.txt'
 
-    indicator_path = 'graph_data/ENZYMES_graph_indicator.txt'
-    edges_path = 'graph_data/ENZYMES_A.txt'
-    graph_labels_path ='graph_data/ENZYMES_graph_labels.txt'
-    node_labels_path = 'graph_data/ENZYMES_node_labels.txt'
-    edge_labels_path = 'graph_data/ENZYMES_edge_labels.txt'
-    node_attrs_path = 'graph_data/ENZYMES_node_attributes.txt'
-    edge_attrs_path ='graph_data/ENZYMES_edge_attributes.txt'
+    indicator_path = '../graph_data/'+name+'_graph_indicator.txt'
+    edges_path = '../graph_data/'+name+'_A.txt'
+    graph_labels_path ='../graph_data/'+name+'_graph_labels.txt'
+    node_labels_path = '../graph_data/'+name+'_node_labels.txt'
+    edge_labels_path = '../graph_data/'+name+'_edge_labels.txt'
+    node_attrs_path = '../graph_data/'+name+'_node_attributes.txt'
+    edge_attrs_path ='../graph_data/'+name+'_edge_attributes.txt'
 
     # indicator_path = '../graph_data/ENZYMES_graph_indicator.txt'
     # edges_path = '../graph_data/ENZYMES_A.txt'
@@ -380,14 +382,15 @@ def parse_tu_data(name, raw_dir):
         # t=adj_lists[2]
         # u=adj_lists[3]
         # s=1
+    if path.exists(node_labels_path):
     # if node_labels_path.exists():
-    with open(node_labels_path, "r") as f:
-        for i, line in enumerate(f.readlines(), 1):
-            line = line.rstrip("\n")
-            node_label = int(line)
-            unique_node_labels.add(node_label)
-            graph_id = indicator[i]
-            node_labels[graph_id].append(node_label)
+        with open(node_labels_path, "r") as f:
+            for i, line in enumerate(f.readlines(), 1):
+                line = line.rstrip("\n")
+                node_label = int(line)
+                unique_node_labels.add(node_label)
+                graph_id = indicator[i]
+                node_labels[graph_id].append(node_label)
 
     # if edge_labels_path.exists():
     # with open(edge_labels_path, "r") as f:
@@ -398,14 +401,14 @@ def parse_tu_data(name, raw_dir):
     #         graph_id = indicator[edge_indicator[i][0]]
     #         edge_labels[graph_id].append(edge_label)
 
-    # if node_attrs_path.exists():
-    with open(node_attrs_path, "r") as f:
-        for i, line in enumerate(f.readlines(), 1):
-            line = line.rstrip("\n")
-            nums = line.split(",")
-            node_attr = np.array([float(n) for n in nums])
-            graph_id = indicator[i]
-            node_attrs[graph_id].append(node_attr)
+    if path.exists(node_attrs_path):
+        with open(node_attrs_path, "r") as f:
+            for i, line in enumerate(f.readlines(), 1):
+                line = line.rstrip("\n")
+                nums = line.split(",")
+                node_attr = np.array([float(n) for n in nums])
+                graph_id = indicator[i]
+                node_attrs[graph_id].append(node_attr)
 
     # if edge_attrs_path.exists():
     # with open(edge_attrs_path, "r") as f:
@@ -448,6 +451,29 @@ def parse_tu_data(name, raw_dir):
                "edge_attrs": edge_attrs
            }, num_node_labels, num_edge_labels, adj_lists
 
+def load_mutag(feature_dim, initializer):
+    num_nodes = 3371
+    num_feats = feature_dim if initializer != 'None' else 500
+    if initializer == "1hot":
+        num_feats = num_nodes
+    feat_data = np.zeros((num_nodes, num_feats))
+    labels = np.empty((num_nodes, 1), dtype=np.int64)
+    # node_map = {}
+    # label_map = {}
+    graphs_data, num_node_labels, num_edge_labels, adj_lists = parse_tu_data("MUTAG", "graph_data")
+    labels = graphs_data["node_labels"]
+    if initializer == "1hot":
+        feat_data = np.eye(num_nodes)
+    elif initializer == "random_normal":
+        feat_data = np.random.normal(0, 1, (num_nodes, feature_dim))
+    elif initializer == "shared":
+        feat_data = np.ones((num_nodes, feature_dim))
+    elif initializer == "node_degree":
+        feat_data = np.zeros((num_nodes, 1))
+        for k, v in adj_lists.items():
+            feat_data[k, 0] = len(v)
+    return graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists
+
 
 def load_enzyme(feature_dim, initializer):
     num_nodes = 19580
@@ -474,6 +500,90 @@ def load_enzyme(feature_dim, initializer):
 
 
 #
+def run_mutag(feature_dim, initializer, identity_dim=50):
+    graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists = load_mutag(feature_dim, initializer)
+    np.random.seed(1)
+    random.seed(1)
+    num_nodes = 3371
+    # graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists=load_enzyme()
+    features = nn.Embedding(3371, 3371)
+    features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
+    graph_nodes = graphs_data["graph_nodes"]
+
+    agg1 = MeanAggregator(features, cuda=True, feature_dim=feature_dim, num_nodes=num_nodes, initializer=initializer)
+    enc1 = Encoder(features, feature_dim, identity_dim, adj_lists,
+                   agg1, gcn=True, cuda=False, initializer=initializer)
+    agg2 = MeanAggregator(lambda nodes: enc1(nodes).t(), num_nodes, cuda=False)
+    enc2 = Encoder(lambda nodes: enc1(nodes).t(), enc1.embed_dim, 128, adj_lists, agg2,
+                   base_model=enc1, gcn=True, cuda=False)
+    enc1.num_samples = 10
+    enc2.num_samples = 25
+    graphsage = SupervisedGraphSageClassify(6, enc2)  # hardcode
+    # filtered = [1,2,3,4,5,6,7,9,10,11,12,13,14,15,17,18,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,
+    #             37,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,
+    #             68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99]
+    total = np.arange(1, 188)
+    random.shuffle(total)
+    ##################### whole, some graph returns nan embedding #####################
+    train = total[0:160]
+    val = total[160:188]
+    test = total[550:-1]
+    ##################### filtered #####################
+    # train=filtered[0:9]
+    # val=filtered[10:15]
+    optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, graphsage.parameters()), lr=0.1)
+    # do not do batch, feed graph one at a time
+    samp = 1
+
+    # error_nodes = set([38, 0 , 19])
+
+    for epoch in range(10):  # harcode: 10 epochs
+        random.shuffle(train)
+        for i in train:
+            samp = samp + 1
+            # for i in range(295,296):
+            # print(str(samp) + "====" + str(i))
+
+            graph_nodes = graphs_data["graph_nodes"][i]  # todo debug graph nodes, id map
+
+            optimizer.zero_grad()
+            graph_label = np.array([graphs_data['graph_labels'][i]])
+            # loss = graphsage.loss(graph_nodes,
+            #                       Variable(torch.LongTensor(graph_label)))#todo, debug lables,
+            # res=graphsage.forward(graph_nodes)
+            m = torch.LongTensor(graph_label)
+            loss = graphsage.loss(graph_nodes,
+                                  Variable(torch.LongTensor(graph_label)))  # todo, debug lables,
+
+            # if (samp % 50 == 0):
+            print(i, loss)
+            loss.backward()
+            optimizer.step()
+            end_time = time.time()
+
+    # val_output = graphsage.forward(val)
+    # res=val_output.data.numpy().argmax(axis=1)
+    # true_label=graphs_data['graph_labels'][val]-1
+    # # print("Validation F1:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro"))
+    # print("Validation F1:", f1_score(graphs_data['graph_labels'][val]-1, val_output.data.numpy().argmax(axis=1), average="micro"))
+    #
+    # print("Average batch time:", np.mean(times))
+    true_label = []
+    for t in val:
+        true_label.append(graphs_data['graph_labels'][t])
+    # lbs=graphs_data['graph_labels'][val]
+    # true_label = graphs_data['graph_labels'][val] - [1]
+    all_val_res = []  # the predicted
+    for v in val:
+        val_output = graphsage.forward(graphs_data["graph_nodes"][v])
+        res = val_output.data.numpy().argmax(axis=1)
+        all_val_res.append(res[0])
+
+    # print("Validation F1:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro"))
+    print("Validation F1:", f1_score(true_label, all_val_res, average="micro"))
+
+    # print("Average batch time:", np.mean(times))
+
 
 def run_enzyme(feature_dim, initializer, identity_dim=50):
     graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists = load_enzyme(feature_dim, initializer)
@@ -725,7 +835,9 @@ def main():
     dataset = args.dataset
     classify = args.classify
 
-    run_enzyme(19580, "1hot")
+    run_mutag(3371, "1hot")
+
+    # run_enzyme(19580, "1hot")
     #
 
     # run_model(dataset, initializer, seed, epochs, classify=classify, feature_dim=feature_dim, identity_dim=identity_dim)
