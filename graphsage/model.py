@@ -618,9 +618,13 @@ def run_mutag(feature_dim, initializer, identity_dim=50):
     total = np.arange(1, 188)
     random.shuffle(total)
     ##################### whole, some graph returns nan embedding #####################
-    train = total[0:160]
-    val = total[160:188]
-    test = total[550:-1]
+    ones = [i for i, x in enumerate(total) if graphs_data['graph_labels'][i] == 1]
+    zeros = [i for i, x in enumerate(total) if graphs_data['graph_labels'][i] == 0]
+    t1 = random.sample(ones, 108)
+    t0 = random.sample(zeros, 54)
+    t1.extend(t0)
+    train = t1
+    val = list(set(total) - set(train))
     ##################### filtered #####################
     # train=filtered[0:9]
     # val=filtered[10:15]
@@ -923,11 +927,11 @@ def main():
     # run_enzyme(19580, "node_degree")
 
     #
-    # run_mutag(3371,"1hot",50)
+    run_mutag(128,"random_normal",50)
     # run_cora("node_degree",1,10,50,100,50)
 
 
-    run_model("cora", "pagerank", 1, 50, "node", 100,50)
+    # run_model("cora", "pagerank", 1, 50, "node", 100,50)
 
 
 
