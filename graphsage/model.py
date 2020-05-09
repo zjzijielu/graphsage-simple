@@ -543,10 +543,17 @@ def load_mutag(feature_dim, initializer):
         feat_data = np.random.normal(0, 1, (num_nodes, feature_dim))
     elif initializer == "shared":
         feat_data = np.ones((num_nodes, feature_dim))
-    elif initializer == "node_degree":
-        feat_data = np.zeros((num_nodes, 1))
+    # elif initializer == "node_degree":
+    #     feat_data = np.zeros((num_nodes, 1))
+    #     for k, v in adj_lists.items():
+    #         feat_data[k, 0] = len(v)
+    if initializer == "node_degree":
+        # convert to 1hot representation
+        node_degrees = [len(v) for v in adj_lists.values()]
+        max_degree = max(node_degrees)
+        feat_data = np.zeros((num_nodes, max_degree + 1))
         for k, v in adj_lists.items():
-            feat_data[k, 0] = len(v)
+            feat_data[k, len(v)] = 1
     return graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists
 
 
@@ -587,7 +594,7 @@ def run_mutag(feature_dim, initializer, identity_dim=50):
     random.seed(1)
     num_nodes = 3371
     # graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists=load_enzyme()
-    features = nn.Embedding(3371, 128)
+    features = nn.Embedding(3371, 1)
     features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
     graph_nodes = graphs_data["graph_nodes"]
 
@@ -909,10 +916,14 @@ def main():
     classify = args.classify
 
     # run_enzyme(19580, "node_degree")
-    run_mutag(128,"shared",50)
+    run_mutag(1,"node_degree",50)
     #
+    # run_mutag(3371,"1hot",50)
+    # run_cora("node_degree",1,10,50,100,50)
 
-    # run_model(dataset, initializer, seed, epochs, classify=classify, feature_dim=feature_dim, identity_dim=identity_dim)
+
+    # run_model("cora", "node_degree", 1, 50, "node", 100,50)
+
 
 
 if __name__ == "__main__":
