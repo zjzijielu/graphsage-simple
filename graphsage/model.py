@@ -624,10 +624,20 @@ def run_mutag(feature_dim, initializer, identity_dim=50):
     #             68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99]
     total = np.arange(1, 188)
     random.shuffle(total)
+
+    ones = [i for i, x in enumerate(total) if graphs_data['graph_labels'][i] == 1]
+    zeros=[i for i, x in enumerate(total) if graphs_data['graph_labels'][i] == 0]
+    t1=random.sample(ones, 108)
+    t0=random.sample(zeros,54)
+    t1.extend(t0)
+    train=t1
+    val=list(set(total)-set(train))
+
     ##################### whole, some graph returns nan embedding #####################
-    train = total[0:160]
-    val = total[160:188]
-    test = total[550:-1]
+    # train = total[0:160]
+    #
+    # val = total[160:188]
+    # test = total[550:-1]
     ##################### filtered #####################
     # train=filtered[0:9]
     # val=filtered[10:15]
