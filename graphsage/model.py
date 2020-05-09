@@ -364,7 +364,7 @@ def parse_tu_data(name, raw_dir):
     with open(edges_path, "r") as f:
         for i, line in enumerate(f.readlines(), 1):
             line = line.rstrip("\n")
-            edge = [int(e) for e in line.split(',')]
+            edge = [int(e) - 1 for e in line.split(',')]
             if edge[0] in adj_lists:
                 adj_lists[edge[0]].add(edge[1])
             else:
@@ -450,6 +450,7 @@ def parse_tu_data(name, raw_dir):
 
 
 def load_enzyme(feature_dim, initializer):
+    print("Initializing with", initializer)
     num_nodes = 19580
     num_feats = feature_dim if initializer != 'None' else 500
     if initializer == "1hot":
@@ -467,9 +468,14 @@ def load_enzyme(feature_dim, initializer):
     elif initializer == "shared":
         feat_data = np.ones((num_nodes, feature_dim))
     elif initializer == "node_degree":
-        feat_data = np.zeros((num_nodes, 1))
+        # convert to 1hot representation
+        print("convert to 1hot")
+        node_degrees = [len(v) for v in adj_lists.values()]
+        max_degree = max(node_degrees)
+        feat_data = np.zeros((num_nodes, max_degree + 1))
         for k, v in adj_lists.items():
-            feat_data[k, 0] = len(v)
+            feat_data[k, len(v)] = 1
+
     return graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists
 
 
@@ -481,7 +487,12 @@ def run_enzyme(feature_dim, initializer, identity_dim=50):
     random.seed(1)
     num_nodes = 19580
     # graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists=load_enzyme()
-    features = nn.Embedding(19580, 19580)
+    if initializer == "1hot":
+        feature_dim = num_nodes
+    elif initializer == "node_degree":
+        feature_dim = feat_data.shape[1]
+        print(feat_data.shape)
+    features = nn.Embedding(num_nodes, feature_dim)
     features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
     graph_nodes = graphs_data["graph_nodes"]
 
@@ -494,55 +505,41 @@ def run_enzyme(feature_dim, initializer, identity_dim=50):
     enc1.num_samples = 10
     enc2.num_samples = 25
     graphsage = SupervisedGraphSageClassify(6, enc2)  # hardcode
-    # filtered = [1,2,3,4,5,6,7,9,10,11,12,13,14,15,17,18,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,
-    #             37,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,
-    #             68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99]
+
     total = np.arange(1, 600)
-    random.shuffle(total)
-    ##################### whole, some graph returns nan embedding #####################
-    train = total[0:500]
-    val = total[500:550]
-    test = total[550:-1]
-    ##################### filtered #####################
-    # train=filtered[0:9]
-    # val=filtered[10:15]
-    optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, graphsage.parameters()), lr=0.1)
+    train = []
+    val = []
+    for i in range(6):
+        train.extend(total[i * 100 : i * 100 + 80])
+        val.extend(total[i * 100 + 80 : i * 100 + 90])
+
+    optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, graphsage.parameters()), lr=0.01)
     # do not do batch, feed graph one at a time
-    samp = 1
     
-    # error_nodes = set([38, 0 , 19])
-
-    for epoch in range(3):  # harcode: 10 epochs
+    for epoch in range(5):  # harcode: 10 epochs
+        print("Epoch ", epoch)
         random.shuffle(train)
-        for i in train:
-            samp = samp + 1
-            # for i in range(295,296):
-            # print(str(samp) + "====" + str(i))
+        loss = 0
+        optimizer.zero_grad()
+        for i, t in enumerate(train):
+            graph_nodes = graphs_data["graph_nodes"][t]  # todo debug graph nodes, id map
 
-            graph_nodes = graphs_data["graph_nodes"][i]  # todo debug graph nodes, id map
-
-            optimizer.zero_grad()
-            graph_label = np.array([graphs_data['graph_labels'][i]])
+            graph_label = np.array([graphs_data['graph_labels'][t]])
             # loss = graphsage.loss(graph_nodes,
             #                       Variable(torch.LongTensor(graph_label)))#todo, debug lables,
             # res=graphsage.forward(graph_nodes)
             m = torch.LongTensor(graph_label)
-            loss = graphsage.loss(graph_nodes,
+            loss += graphsage.loss(graph_nodes,
                                 Variable(torch.LongTensor(graph_label)))  # todo, debug lables,
 
-            if (samp % 50 == 0):
-                print(i, loss.data[0])
-            loss.backward()
-            optimizer.step()
+            if (i % 50 == 0):
+                print("Batch", int(i/50), "Loss:",  loss.data[0])
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
+                loss = 0
             end_time = time.time()
         
-    # val_output = graphsage.forward(val)
-    # res=val_output.data.numpy().argmax(axis=1)
-    # true_label=graphs_data['graph_labels'][val]-1
-    # # print("Validation F1:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro"))
-    # print("Validation F1:", f1_score(graphs_data['graph_labels'][val]-1, val_output.data.numpy().argmax(axis=1), average="micro"))
-    #
-    # print("Average batch time:", np.mean(times))
     true_label = []
     for t in val:
         true_label.append(graphs_data['graph_labels'][t])
@@ -554,9 +551,8 @@ def run_enzyme(feature_dim, initializer, identity_dim=50):
         res = val_output.data.numpy().argmax(axis=1)
         all_val_res.append(res[0])
 
-    # print("Validation F1:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro"))
-    print("Validation F1:", f1_score(true_label, all_val_res, average="micro"))
-
+    print("Validation F1 micro:", f1_score(true_label, all_val_res, average="micro"))
+    print("Validation F1 macro:", f1_score(true_label, all_val_res, average="macro"))
     # print("Average batch time:", np.mean(times))
 
 
@@ -725,7 +721,7 @@ def main():
     dataset = args.dataset
     classify = args.classify
 
-    run_enzyme(19580, "1hot")
+    run_enzyme(19580, "node_degree")
     #
 
     # run_model(dataset, initializer, seed, epochs, classify=classify, feature_dim=feature_dim, identity_dim=identity_dim)

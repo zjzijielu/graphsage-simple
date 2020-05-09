@@ -81,6 +81,7 @@ class MeanAggregator(nn.Module):
             embed_matrix = self.features(torch.LongTensor(unique_nodes_list).cuda())
         else:
             embed_matrix = self.features(torch.LongTensor(unique_nodes_list))
+        print(embed_matrix)
         # print("embed_matrix has shape", embed_matrix.shape)
         if initializer in ["1hot", "node_degree"]:
             indices = [np.where(a == 1)[0][0] for a in embed_matrix]
