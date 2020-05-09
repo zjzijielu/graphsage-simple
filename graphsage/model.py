@@ -544,6 +544,7 @@ def load_mutag(feature_dim, initializer):
         feat_data = np.random.normal(0, 1, (num_nodes, feature_dim))
     elif initializer == "shared":
         feat_data = np.ones((num_nodes, feature_dim))
+
     # elif initializer == "node_degree":
     #     feat_data = np.zeros((num_nodes, 1))
     #     for k, v in adj_lists.items():
@@ -555,6 +556,7 @@ def load_mutag(feature_dim, initializer):
         feat_data = np.zeros((num_nodes, max_degree + 1))
         for k, v in adj_lists.items():
             feat_data[k, len(v)] = 1
+
     return graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists
 
 
@@ -919,7 +921,7 @@ def main():
     classify = args.classify
 
     # run_enzyme(19580, "node_degree")
-    run_mutag(0,"node_degree",50)
+    run_mutag(128,"random_normal",50)
     #
     # run_mutag(3371,"1hot",50)
     # run_cora("node_degree",1,10,50,100,50)
