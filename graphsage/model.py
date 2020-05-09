@@ -831,13 +831,7 @@ def main():
     dataset = args.dataset
     classify = args.classify
 
-<<<<<<< HEAD
     run_enzyme(19580, "node_degree")
-=======
-    run_mutag(3371, "1hot")
-
-    # run_enzyme(19580, "1hot")
->>>>>>> bb2643fc573292fe5cf9a20cf482573fb9282cb2
     #
 
     # run_model(dataset, initializer, seed, epochs, classify=classify, feature_dim=feature_dim, identity_dim=identity_dim)
