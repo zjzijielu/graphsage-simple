@@ -513,36 +513,29 @@ def run_enzyme(feature_dim, initializer, identity_dim=50):
     # error_nodes = set([38, 0 , 19])
 
     for epoch in range(3):  # harcode: 10 epochs
+        random.shuffle(train)
         for i in train:
-        #     if i in error_nodes:
-        #         continue
-            try:
-                samp = samp + 1
-                # for i in range(295,296):
-                # print(str(samp) + "====" + str(i))
+            samp = samp + 1
+            # for i in range(295,296):
+            # print(str(samp) + "====" + str(i))
 
-                graph_nodes = graphs_data["graph_nodes"][i]  # todo debug graph nodes, id map
+            graph_nodes = graphs_data["graph_nodes"][i]  # todo debug graph nodes, id map
 
-                optimizer.zero_grad()
-                graph_label = np.array([graphs_data['graph_labels'][i]])
-                # loss = graphsage.loss(graph_nodes,
-                #                       Variable(torch.LongTensor(graph_label)))#todo, debug lables,
-                # res=graphsage.forward(graph_nodes)
-                m = torch.LongTensor(graph_label)
-                loss = graphsage.loss(graph_nodes,
-                                    Variable(torch.LongTensor(graph_label)))  # todo, debug lables,
+            optimizer.zero_grad()
+            graph_label = np.array([graphs_data['graph_labels'][i]])
+            # loss = graphsage.loss(graph_nodes,
+            #                       Variable(torch.LongTensor(graph_label)))#todo, debug lables,
+            # res=graphsage.forward(graph_nodes)
+            m = torch.LongTensor(graph_label)
+            loss = graphsage.loss(graph_nodes,
+                                Variable(torch.LongTensor(graph_label)))  # todo, debug lables,
 
-                if (i == 10):
-                    print(i, loss)
-                loss.backward()
-                optimizer.step()
-                end_time = time.time()
-            except:
-                print(i)
-                exit()
-            
-    
-    print("error_nodes:", error_nodes)
+            if (samp % 50 == 0):
+                print(i, loss.data[0])
+            loss.backward()
+            optimizer.step()
+            end_time = time.time()
+        
     # val_output = graphsage.forward(val)
     # res=val_output.data.numpy().argmax(axis=1)
     # true_label=graphs_data['graph_labels'][val]-1
@@ -552,15 +545,11 @@ def run_enzyme(feature_dim, initializer, identity_dim=50):
     # print("Average batch time:", np.mean(times))
     true_label = []
     for t in val:
-        if t in error_nodes:
-            continue
         true_label.append(graphs_data['graph_labels'][t])
     # lbs=graphs_data['graph_labels'][val]
     # true_label = graphs_data['graph_labels'][val] - [1]
     all_val_res = []  # the predicted
     for v in val:
-        if v in error_nodes:
-            continue
         val_output = graphsage.forward(graphs_data["graph_nodes"][v])
         res = val_output.data.numpy().argmax(axis=1)
         all_val_res.append(res[0])
