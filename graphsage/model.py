@@ -173,6 +173,81 @@ def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=12
     print("Validation F1 macro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="macro"))
     print("Average batch time:", np.mean(times))
 
+def run_model_classify(dataset, initializer, seed, epochs, classify="node", batch_size=128, feature_dim=100, identity_dim=50):
+    # merge run_cora and run_pubmed
+    num_nodes_map = { "mutag": 3371}
+    num_classes_map = { "mutag": 2}
+    enc1_num_samples_map = {"mutag": 10}
+    enc2_num_samples_map = {"mutag": 25}
+    # attribute_dim = {"cora": 1433, "pubmed": 500}
+
+    np.random.seed(seed)
+    random.seed(seed)
+    feat_data = []
+    labels = []
+    adj_lists = []
+    num_nodes = num_nodes_map[dataset]
+    num_classes = num_classes_map[dataset]
+
+    # if dataset == "cora":
+    feat_data, labels, adj_lists = load_mutag(feature_dim, initializer)
+    # elif dataset == "pubmed":
+    #     feat_data, labels, adj_lists = load_pubmed(feature_dim, initializer)
+
+    # feat_data, labels, adj_lists = load_data(dataset, feature_dim, initializer)
+    print(feat_data)
+    if initializer == "1hot":
+        feature_dim = num_nodes
+    elif initializer == "node_degree":
+        feature_dim = feat_data.shape[1]
+    print("feature dim is", feature_dim)
+    features = nn.Embedding(num_nodes, feature_dim)
+    features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
+    # features.cuda()
+
+    agg1 = MeanAggregator(features, cuda=True, feature_dim=feature_dim, num_nodes=num_nodes, initializer=initializer)
+    enc1 = Encoder(features, feature_dim if initializer != "None" else attribute_dim[dataset], identity_dim, adj_lists,
+                   agg1, gcn=True, cuda=False, initializer=initializer)
+    agg2 = MeanAggregator(lambda nodes: enc1(nodes).t(), num_nodes, cuda=False)
+    enc2 = Encoder(lambda nodes: enc1(nodes).t(), enc1.embed_dim, 128, adj_lists, agg2,
+                   base_model=enc1, gcn=True, cuda=False)
+    enc1.num_samples = enc1_num_samples_map[dataset]
+    enc2.num_samples = enc2_num_samples_map[dataset]
+
+    graphsage = SupervisedGraphSage(num_classes, enc2)
+    #    graphsage.cuda()
+    rand_indices = np.random.permutation(num_nodes)
+    test_end_idx = int(0.1 * num_nodes)
+    val_end_idx = int(0.2 * num_nodes)
+    test = rand_indices[:test_end_idx]
+    val = rand_indices[test_end_idx:val_end_idx]
+    train = list(rand_indices[val_end_idx:])
+    train_num = len(train)
+
+    optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, graphsage.parameters()), lr=0.7)
+    times = []
+
+    for epoch in range(epochs):
+        print("Epoch:", epoch)
+        random.shuffle(train)
+        for batch in range(0, train_num, batch_size):
+            batch_nodes = train[batch:max(train_num, batch + batch_size)]
+            start_time = time.time()
+            optimizer.zero_grad()
+            loss = graphsage.loss(batch_nodes,
+                                  Variable(torch.LongTensor(labels[np.array(batch_nodes)])))
+            loss.backward()
+            optimizer.step()
+            end_time = time.time()
+            times.append(end_time - start_time)
+            if (batch == 0):
+                print("Batch", batch, "Loss:", loss.item())
+
+    val_output = graphsage.forward(val)
+    print("Validation F1 micro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro"))
+    print("Validation F1 macro:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="macro"))
+    print("Average batch time:", np.mean(times))
+
 
 def load_cora(feature_dim, initializer="None"):
     num_nodes = 2708
@@ -512,7 +587,7 @@ def run_mutag(feature_dim, initializer, identity_dim=50):
     random.seed(1)
     num_nodes = 3371
     # graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists=load_enzyme()
-    features = nn.Embedding(3371, 3371)
+    features = nn.Embedding(3371, 128)
     features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
     graph_nodes = graphs_data["graph_nodes"]
 
@@ -587,6 +662,7 @@ def run_mutag(feature_dim, initializer, identity_dim=50):
 
     # print("Validation F1:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro"))
     print("Validation F1:", f1_score(true_label, all_val_res, average="micro"))
+    print("Validation F1:", f1_score(true_label, all_val_res, average="macro"))
 
     # print("Average batch time:", np.mean(times))
 
@@ -801,6 +877,7 @@ def run_pubmed():
 
     val_output = graphsage.forward(val)
     print("Validation F1:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="micro"))
+    print("Validation F1:", f1_score(labels[val], val_output.data.numpy().argmax(axis=1), average="macro"))
     print("Average batch time:", np.mean(times))
 
 
@@ -831,7 +908,8 @@ def main():
     dataset = args.dataset
     classify = args.classify
 
-    run_enzyme(19580, "node_degree")
+    # run_enzyme(19580, "node_degree")
+    run_mutag(128,"shared",50)
     #
 
     # run_model(dataset, initializer, seed, epochs, classify=classify, feature_dim=feature_dim, identity_dim=identity_dim)
