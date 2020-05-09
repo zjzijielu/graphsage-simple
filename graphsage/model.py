@@ -587,7 +587,7 @@ def run_mutag(feature_dim, initializer, identity_dim=50):
     random.seed(1)
     num_nodes = 3371
     # graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists=load_enzyme()
-    features = nn.Embedding(3371, 128)
+    features = nn.Embedding(3371, 3371)
     features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
     graph_nodes = graphs_data["graph_nodes"]
 
@@ -909,7 +909,7 @@ def main():
     classify = args.classify
 
     # run_enzyme(19580, "node_degree")
-    run_mutag(128,"shared",50)
+    run_mutag(3371,"1hot",50)
     #
 
     # run_model(dataset, initializer, seed, epochs, classify=classify, feature_dim=feature_dim, identity_dim=identity_dim)
