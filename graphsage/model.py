@@ -430,7 +430,7 @@ def parse_tu_data(name, raw_dir):
     edge_labels = defaultdict(list)
     node_attrs = defaultdict(list)
     edge_attrs = defaultdict(list)
-
+    G = nx.Graph()
     with open(indicator_path, "r") as f:
         for i, line in enumerate(f.readlines(), 1):
             line = line.rstrip("\n")
@@ -447,7 +447,7 @@ def parse_tu_data(name, raw_dir):
             else:
                 adj_lists[edge[0]] = set([edge[1]])
             edge_indicator.append(edge)
-
+            G.add_edge(edge[0],edge[1])
             # edge[0] is a node id, and it is used to retrieve
             # the corresponding graph id to which it belongs to
             # (see README.txt)
@@ -524,7 +524,7 @@ def parse_tu_data(name, raw_dir):
                "node_attrs": node_attrs,
                "edge_labels": edge_labels,
                "edge_attrs": edge_attrs
-           }, num_node_labels, num_edge_labels, adj_lists
+           }, num_node_labels, num_edge_labels, adj_lists,G
 
 def load_mutag(feature_dim, initializer):
     num_nodes = 3371
@@ -536,7 +536,7 @@ def load_mutag(feature_dim, initializer):
     # node_map = {}
     # label_map = {}
 
-    graphs_data, num_node_labels, num_edge_labels, adj_lists = parse_tu_data("MUTAG", "graph_data")
+    graphs_data, num_node_labels, num_edge_labels, adj_lists,G = parse_tu_data("MUTAG", "graph_data")
     labels = graphs_data["node_labels"]
     if initializer == "1hot":
         feat_data = np.eye(num_nodes)
@@ -544,7 +544,9 @@ def load_mutag(feature_dim, initializer):
         feat_data = np.random.normal(0, 1, (num_nodes, feature_dim))
     elif initializer == "shared":
         feat_data = np.ones((num_nodes, feature_dim))
-
+    # elif initializer == "pagerank" or initializer == "eigen_decomposition":
+    #         G = nx.Graph()
+    #         G.add_nodes_from(node_map.values())
     # elif initializer == "node_degree":
     #     feat_data = np.zeros((num_nodes, 1))
     #     for k, v in adj_lists.items():
@@ -557,6 +559,11 @@ def load_mutag(feature_dim, initializer):
         for k, v in adj_lists.items():
             feat_data[k, len(v)] = 1
 
+    elif initializer == "pagerank":
+        feat_data = np.zeros((num_nodes, 1))
+        pagerank = nx.pagerank(G)
+        for k, v in pagerank.items():
+            feat_data[k, 0] = v
     return graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists
 
 
@@ -599,7 +606,7 @@ def run_mutag(feature_dim, initializer, identity_dim=50):
     if initializer == "node_degree":
         feature_dim = feat_data.shape[1]
     # graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists=load_enzyme()
-    features = nn.Embedding(3371, feature_dim)
+    features = nn.Embedding(3371, 1)
     features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
     graph_nodes = graphs_data["graph_nodes"]
 
@@ -923,11 +930,11 @@ def main():
     # run_enzyme(19580, "node_degree")
 
     #
-    # run_mutag(3371,"1hot",50)
+    run_mutag(1,"pagerank",50)
     # run_cora("node_degree",1,10,50,100,50)
 
 
-    run_model("cora", "pagerank", 1, 50, "node", 100,50)
+    # run_model("cora", "pagerank", 1, 50, "node", 128,1,50)
 
 
 
