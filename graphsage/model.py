@@ -535,6 +535,7 @@ def load_mutag(feature_dim, initializer):
     labels = np.empty((num_nodes, 1), dtype=np.int64)
     # node_map = {}
     # label_map = {}
+
     graphs_data, num_node_labels, num_edge_labels, adj_lists = parse_tu_data("MUTAG", "graph_data")
     labels = graphs_data["node_labels"]
     if initializer == "1hot":
@@ -593,8 +594,10 @@ def run_mutag(feature_dim, initializer, identity_dim=50):
     np.random.seed(1)
     random.seed(1)
     num_nodes = 3371
+    if initializer == "node_degree":
+        feature_dim = feat_data.shape[1]
     # graphs_data, num_edge_labels, num_edge_labels, feat_data, labels, adj_lists=load_enzyme()
-    features = nn.Embedding(3371, 1)
+    features = nn.Embedding(3371, feature_dim)
     features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
     graph_nodes = graphs_data["graph_nodes"]
 
@@ -606,7 +609,7 @@ def run_mutag(feature_dim, initializer, identity_dim=50):
                    base_model=enc1, gcn=True, cuda=False)
     enc1.num_samples = 10
     enc2.num_samples = 25
-    graphsage = SupervisedGraphSageClassify(6, enc2)  # hardcode
+    graphsage = SupervisedGraphSageClassify(2, enc2)  # hardcode
     # filtered = [1,2,3,4,5,6,7,9,10,11,12,13,14,15,17,18,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,
     #             37,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,
     #             68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99]
@@ -916,7 +919,7 @@ def main():
     classify = args.classify
 
     # run_enzyme(19580, "node_degree")
-    run_mutag(1,"node_degree",50)
+    run_mutag(0,"node_degree",50)
     #
     # run_mutag(3371,"1hot",50)
     # run_cora("node_degree",1,10,50,100,50)
