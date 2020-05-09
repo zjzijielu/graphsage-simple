@@ -921,13 +921,13 @@ def main():
     classify = args.classify
 
     # run_enzyme(19580, "node_degree")
-    run_mutag(128,"random_normal",50)
+
     #
     # run_mutag(3371,"1hot",50)
     # run_cora("node_degree",1,10,50,100,50)
 
 
-    # run_model("cora", "node_degree", 1, 50, "node", 100,50)
+    run_model("cora", "pagerank", 1, 50, "node", 100,50)
 
 
 
