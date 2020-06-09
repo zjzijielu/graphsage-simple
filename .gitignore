@@ -119,3 +119,10 @@ deepwalk/
 
 # struct data
 struc2vec
+
+# eigenvector heatmap
+eigenvector_heatmap.py
+
+gnn-comparison
+
+struc2vec

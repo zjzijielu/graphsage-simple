@@ -58,12 +58,14 @@ class MeanAggregator(nn.Module):
         if self.cuda:
             mask = mask.cuda()
         num_neigh = mask.sum(1, keepdim=True)
-        mask = mask.div(num_neigh)
+        for i in range(mask.size(0)):
+            if num_neigh[i, 0] != 0:
+                mask[i] = mask[i].div(num_neigh[i])
+        # mask = mask.div(num_neigh)
         if self.cuda:
             embed_matrix = self.features(torch.LongTensor(unique_nodes_list).cuda())
         else:
             embed_matrix = self.features(torch.LongTensor(unique_nodes_list))
-        # print("embed_matrix has shape", embed_matrix.shape)
         # print embed_matrix
         if initializer in ["1hot", "node_degree"]:
             indices = [np.where(a == 1)[0][0] for a in embed_matrix]
@@ -72,5 +74,4 @@ class MeanAggregator(nn.Module):
             # print embed_matrix.shape
             
         to_feats = mask.mm(embed_matrix)
-        # print "to_feat has shape", to_feats.shape
         return to_feats
