@@ -463,7 +463,7 @@ def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=12
     num_nodes_map = {"cora": 2708, "pubmed": 19717, "citeseer": 3312, "usa-airport": 1190, "brazil-airport": 131, 'europe-airport': 399}
     num_classes_map = {"cora": 7, "pubmed": 3, "citeseer": 6, "usa-airport": 4, "brazil-airport": 4, "europe-airport": 4}
     # enc1_dim_map = {"cora": 128, "pubmed": 128, "citeseer": 128,  "brazil-airport": 32}
-    enc2_dim_map = {"cora": 32, "pubmed": 128, "citeseer": 128, "usa-airport":128, "brazil-airport": 32, "europe-airport": 64}
+    enc2_dim_map = {"cora": 32, "pubmed": 32, "citeseer": 128, "usa-airport":128, "brazil-airport": 32, "europe-airport": 64}
     enc1_num_samples_map = {"cora": 5, "pubmed": 10, "citeseer": 5, "usa-airport": 5, "brazil-airport": 5, "europe-airport": 5}
     enc2_num_samples_map = {"cora": 5, "pubmed": 25, "citeseer": 5, "usa-airport": 5, "brazil-airport": 5, "europe-airport": 5}
     attribute_dim = {"cora": 1433, "pubmed": 500, "citeseer": 3703}
@@ -494,9 +494,7 @@ def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=12
 
     # feat_data, labels, adj_lists = load_data(dataset, feature_dim, initializer)
     # print(feat_data)
-    if initializer == "1hot":
-        feature_dim = num_nodes
-    elif initializer == "node_degree":
+    if initializer == "node_degree":
         feature_dim = feat_data.shape[1]
     print("feature dim is", feature_dim)
     features = nn.Embedding(num_nodes, feature_dim)
@@ -515,10 +513,12 @@ def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=12
     graphsage = SupervisedGraphSage(num_classes, enc2)
 #    graphsage.cuda()
     test_end_idx_map = {
-        "cora": 1000
+        "cora": 1000,
+        "pubmed": 1000
     }
     val_end_idx_map = {
-        "cora": 1500
+        "cora": 1500,
+        "pubmed": 1500
     }
     rand_indices = np.random.permutation(num_nodes)
     test_end_idx = test_end_idx_map[dataset]
@@ -592,7 +592,7 @@ def load_cora(feature_dim, initializer="None"):
             G = nx.Graph()
             G.add_nodes_from(node_map.values())
         elif initializer == "deepwalk":
-            feat_data = extract_deepwalk_embeddings("cora/cora.embeddings", node_map)
+            feat_data = extract_deepwalk_embeddings("cora/cora_{dim}.embeddings".format(dim=feature_dim), node_map)
 
     adj_lists = defaultdict(set)
     with open("cora/cora.cites") as fp:
@@ -629,10 +629,9 @@ def load_cora(feature_dim, initializer="None"):
             indices = np.argsort(w)[::-1]
             v = v.transpose()[indices]
             # only save top 1000 eigenvectors
-            np.save("cora/cora_eigenvector", v[:1000])
+            np.save("cora/cora_eigenvector", v[:2000])
         print(v)
         feat_data = np.zeros((num_nodes, feature_dim))
-        assert(feature_dim <= 1000)
         for i in range(num_nodes):
             for j in range(feature_dim):
                 feat_data[i, j] = v[j, i]
@@ -645,9 +644,9 @@ def run_cora(initializer, seed, epochs, batch_size=128, feature_dim=100, identit
     num_nodes = 2708
     feat_data, labels, adj_lists = load_cora(num_nodes, feature_dim, initializer)
     print(feat_data, initializer)
-    if initializer == "1hot":
-        feature_dim = num_nodes
-    elif initializer == "node_degree":
+    # if initializer == "1hot":
+    #     feature_dim = num_nodes
+    if initializer == "node_degree":
         feature_dim = feat_data.shape[1]
         print(feat_data.shape)
     print("feature dim is", feature_dim)
@@ -753,8 +752,6 @@ def load_pubmed(feature_dim, initializer):
             if initializer == "pagerank" or initializer == "eigen_decomposition":
                 G.add_edge(paper1, paper2)
                 G.add_edge(paper2, paper1)
-    print("isolates:", list(nx.isolates(G)))
-    exit()
 
     if initializer == "node_degree":
         # convert to 1hot representation
