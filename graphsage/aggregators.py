@@ -72,6 +72,9 @@ class MeanAggregator(nn.Module):
             indices = torch.LongTensor(indices)
             embed_matrix = self.embed(indices)
             # print embed_matrix.shape
-            
+        print("embed matrix", embed_matrix.shape, "\n", embed_matrix)
+
         to_feats = mask.mm(embed_matrix)
+        print("mask", mask.shape, "\n", mask)
+        print("to_feats", to_feats.shape, "\n", to_feats)
         return to_feats

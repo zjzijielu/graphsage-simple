@@ -126,3 +126,7 @@ eigenvector_heatmap.py
 gnn-comparison
 
 struc2vec
+
+# result
+result/
+results/
