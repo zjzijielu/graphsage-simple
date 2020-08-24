@@ -10,7 +10,7 @@ from sklearn.metrics import f1_score, accuracy_score
 from collections import defaultdict
 
 from graphsage.encoders import Encoder
-from graphsage.aggregators import MeanAggregator
+from graphsage.aggregators import MeanAggregator, SumAggregator
 
 import argparse
 import networkx as nx
@@ -67,24 +67,18 @@ def load_brazil_airport(feature_dim, initializer="None"):
     '''
     num_nodes = 131
     num_feats = feature_dim if initializer != 'None' else 1433
-    num_classes = 4
     train_size = int(num_nodes * 0.8)
-    test_size = int(num_nodes * 0.2)
+    test_size = num_nodes - train_size
     if initializer == "1hot":
         num_feats = num_nodes
     feat_data = np.zeros((num_nodes, num_feats))
     labels = np.empty((num_nodes,1), dtype=np.int64)
-    train_feat_data = np.zeros((train_size, num_feats))
-    test_feat_data = np.zeros((test_size, num_feats))
-    train_labels = np.empty((train_size, 1), dtype=np.int64)
-    test_labels = np.empty((test_size, 1), dtype=np.int64)
 
     node_map = {}
     label_map = {}
     label_node_list_map = {}
     train_idx = []
     test_idx = []
-    val_idx = []
 
     if initializer == "None":
         with open("brazil-airports/labels-brazil-airports.txt") as fp:
@@ -146,7 +140,7 @@ def load_brazil_airport(feature_dim, initializer="None"):
         for k, v in adj_lists.items():
             feat_data[k, len(v)] = 1
     elif initializer == "pagerank":
-        feat_data = np.zeros((num_nodes, 500))
+        feat_data = np.zeros((num_nodes, 100))
         pagerank = nx.pagerank(G)
         for k, v in pagerank.items():
             feat_data[k, :] = v
@@ -188,15 +182,11 @@ def load_usa_airport(feature_dim, initializer="None"):
     num_feats = feature_dim if initializer != 'None' else 1433
     num_classes = 4
     train_size = int(num_nodes * 0.8)
-    test_size = int(num_nodes * 0.2)
+    test_size = num_nodes - train_size
     if initializer == "1hot":
         num_feats = num_nodes
     feat_data = np.zeros((num_nodes, num_feats))
     labels = np.empty((num_nodes,1), dtype=np.int64)
-    train_feat_data = np.zeros((train_size, num_feats))
-    test_feat_data = np.zeros((test_size, num_feats))
-    train_labels = np.empty((train_size, 1), dtype=np.int64)
-    test_labels = np.empty((test_size, 1), dtype=np.int64)
 
     node_map = {}
     label_map = {}
@@ -268,7 +258,7 @@ def load_usa_airport(feature_dim, initializer="None"):
             feat_data[k, len(v)] = 1
         
     elif initializer == "pagerank":
-        feat_data = np.zeros((num_nodes, 500))
+        feat_data = np.zeros((num_nodes, 100))
         pagerank = nx.pagerank(G)
         for k, v in pagerank.items():
             feat_data[k, :] = v
@@ -294,9 +284,8 @@ def load_usa_airport(feature_dim, initializer="None"):
 
     test_idx = []
     for label, node_list in label_node_list_map.items():
-        node_list_size = len(node_list)
-        anchor = int(node_list_size * 0.8)
         random.shuffle(node_list)
+        anchor = int(0.8*len(node_list))
         train_idx.extend(node_list[:anchor])
         test_idx.extend(node_list[anchor:])
 
@@ -316,17 +305,12 @@ def load_europe_airport(feature_dim, initializer="None"):
         num_feats = num_nodes
     feat_data = np.zeros((num_nodes, num_feats))
     labels = np.empty((num_nodes,1), dtype=np.int64)
-    train_feat_data = np.zeros((train_size, num_feats))
-    test_feat_data = np.zeros((test_size, num_feats))
-    train_labels = np.empty((train_size, 1), dtype=np.int64)
-    test_labels = np.empty((test_size, 1), dtype=np.int64)
 
     node_map = {}
     label_map = {}
     label_node_list_map = {}
     train_idx = []
     test_idx = []
-    val_idx = []
 
     if initializer == "None":
         with open("europe-airports/labels-europe-airports.txt") as fp:
@@ -388,7 +372,7 @@ def load_europe_airport(feature_dim, initializer="None"):
         for k, v in adj_lists.items():
             feat_data[k, len(v)] = 1
     elif initializer == "pagerank":
-        feat_data = np.zeros((num_nodes, 500))
+        feat_data = np.zeros((num_nodes, 50))
         pagerank = nx.pagerank(G)
         for k, v in pagerank.items():
             feat_data[k, 0] = v
@@ -435,13 +419,6 @@ def load_citeseer(feature_dim, initializer="None"):
         num_feats = num_nodes
     feat_data = np.zeros((num_nodes, num_feats))
     labels = np.empty((num_nodes,1), dtype=np.int64)
-    train_feat_data = np.zeros((train_size, num_feats))
-    test_feat_data = np.zeros((1000, num_feats))
-    val_feat_data = np.zeros((500, num_feats))
-    labels = np.empty((num_nodes,1), dtype=np.int64)
-    train_labels = np.empty((train_size, 1), dtype=np.int64)
-    test_labels = np.empty((1000, 1), dtype=np.int64)
-    val_labels = np.empty((500, 1), dtype=np.int64)
 
     node_map = {}
     label_map = {}
@@ -520,16 +497,19 @@ def load_citeseer(feature_dim, initializer="None"):
             feat_data[k, :] = v
     elif initializer == "eigen_decomposition":
         try:
-            v = np.load("citeseer/citeseer_eigenvector.npy")
+            v = np.load("citeseer/citeseer_eigenvector_degree_normalized.npy")
             print(v.shape)
         except:
             adj_matrix = nx.to_numpy_array(G)
+            # normalize adjacency matrix with degree
+            sum_of_rows = adj_matrix.sum(axis=1)
+            normalized_adj_matrix = adj_matrix / sum_of_rows[:, None]
             print("start computing eigen vectors")
-            w, v = LA.eig(adj_matrix)
+            w, v = LA.eig(normalized_adj_matrix)
             indices = np.argsort(w)[::-1]
             v = v.transpose()[indices]
             # only save top 1000 eigenvectors
-            np.save("citeseer/citeseer_eigenvector", v)
+            np.save("citeseer/citeseer_eigenvector_degree_normalized", v)
         
         # for j in range(0, 5):
         #     count = 0
@@ -550,7 +530,7 @@ def load_citeseer(feature_dim, initializer="None"):
 
         # plt.show()
         feat_data = np.zeros((num_nodes, feature_dim))
-        assert(feature_dim <= 1000)
+        # assert(feature_dim <= 1000)
         for i in range(num_nodes):
             for j in range(feature_dim):
                 feat_data[i, j] = v[j, i]
@@ -568,13 +548,13 @@ def load_citeseer(feature_dim, initializer="None"):
     return feat_data, labels, train_idx, test_idx, val_idx, adj_lists
 
 
-def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=128, feature_dim=100, identity_dim=50):
+def run_model(dataset, initializer, seed, epochs, batch_size=128, feature_dim=100, identity_dim=50, lr=0.01):
     # merge run_cora and run_pubmed
     num_nodes_map = {"cora": 2708, "pubmed": 19717, "citeseer": 3312, "usa-airport": 1190, "brazil-airport": 131, 'europe-airport': 399}
     num_classes_map = {"cora": 7, "pubmed": 3, "citeseer": 6, "usa-airport": 4, "brazil-airport": 4, "europe-airport": 4}
     # enc1_dim_map = {"cora": 128, "pubmed": 128, "citeseer": 128,  "brazil-airport": 32}
     enc2_dim_map = {"cora": 32, "pubmed": 32, "citeseer": 32, "usa-airport": 32, "brazil-airport": 32, "europe-airport": 32}
-    enc1_num_samples_map = {"cora": 5, "pubmed": 10, "citeseer": 5, "usa-airport": 15, "brazil-airport": 15, "europe-airport": 15}
+    enc1_num_samples_map = {"cora": 5, "pubmed": 10, "citeseer": 5, "usa-airport": 30, "brazil-airport": 15, "europe-airport": 15}
     enc2_num_samples_map = {"cora": 5, "pubmed": 25, "citeseer": 5, "usa-airport": 30, "brazil-airport": 5, "europe-airport": 15}
     attribute_dim = {"cora": 1433, "pubmed": 500, "citeseer": 3703}
 
@@ -608,39 +588,61 @@ def run_model(dataset, initializer, seed, epochs, classify="node", batch_size=12
         feature_dim = feat_data.shape[1]
     print("feature dim is", feature_dim)
     features = nn.Embedding(num_nodes, feature_dim)
-    features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
-   # features.cuda()
+    if initializer != "1hot": 
+        features.weight = nn.Parameter(torch.FloatTensor(feat_data), requires_grad=False)
+    # features.cuda()
 
-    agg1 = MeanAggregator(features, cuda=True, feature_dim=feature_dim, num_nodes=num_nodes, initializer=initializer)
-    enc1 = Encoder(features, feature_dim if initializer != "None" else attribute_dim[dataset], identity_dim, adj_lists, agg1, gcn=True, cuda=False, initializer=initializer)
-    agg2 = MeanAggregator(lambda nodes : enc1(nodes).t(), num_nodes, cuda=False)
-    enc2 = Encoder(lambda nodes : enc1(nodes).t(), enc1.embed_dim, enc2_dim, adj_lists, agg2,
-            base_model=enc1, gcn=True, cuda=False)
+    if "airport" in dataset:
+        agg1 = SumAggregator(features, cuda=True, feature_dim=feature_dim, num_nodes=num_nodes, initializer=initializer)
+        enc1 = Encoder(features, feature_dim if initializer != "None" else attribute_dim[dataset], identity_dim, adj_lists, agg1, gcn=False, cuda=False, initializer=initializer)
+        agg2 = SumAggregator(lambda nodes : enc1(nodes).t(), num_nodes, cuda=False)
+        enc2 = Encoder(lambda nodes : enc1(nodes).t(), enc1.embed_dim, enc2_dim, adj_lists, agg2,
+                base_model=enc1, gcn=False, cuda=False)
+    else:
+        agg1 = MeanAggregator(features, cuda=True, feature_dim=feature_dim, num_nodes=num_nodes, initializer=initializer)
+        enc1 = Encoder(features, feature_dim if initializer != "None" else attribute_dim[dataset], identity_dim, adj_lists, agg1, gcn=False, cuda=False, initializer=initializer)
+        agg2 = MeanAggregator(lambda nodes : enc1(nodes).t(), num_nodes, cuda=False)
+        enc2 = Encoder(lambda nodes : enc1(nodes).t(), enc1.embed_dim, enc2_dim, adj_lists, agg2,
+                base_model=enc1, gcn=False, cuda=False)
     enc1.num_samples = enc1_num_samples_map[dataset]
     enc2.num_samples = enc2_num_samples_map[dataset]
 
 
     graphsage = SupervisedGraphSage(num_classes, enc2)
 
-    optimizer = torch.optim.SGD(filter(lambda p : p.requires_grad, graphsage.parameters()), lr=0.5)
+    optimizer = torch.optim.Adam(filter(lambda p : p.requires_grad, graphsage.parameters()), lr=lr)
     times = []
     
-    train_labels = labels[np.array(train_idx)]
-
     for epoch in range(epochs):
+        random.shuffle(train_idx)
+        train_labels = labels[np.array(train_idx)]
         start_time = time.time()
         optimizer.zero_grad()
         loss = graphsage.loss(train_idx, 
                 Variable(torch.LongTensor(train_labels)))
         # loss = graphsage.loss(train, 
         #         Variable(torch.LongTensor(labels[np.array(train)])))
+
+        # train_output = graphsage.forward(train_idx)
+        # print("Validation F1 micro:", f1_score(labels[train_idx], train_output.data.numpy().argmax(axis=1), average="micro"))
+
         loss.backward()
         optimizer.step()
         end_time = time.time()
         times.append(end_time-start_time)
-        print("Epoch:", epoch+1, "Loss:", loss.item())
+        # print("Epoch:", epoch+1, "Loss:", loss.item())
 
     val_output = graphsage.forward(val_idx) 
+
+    '''
+    train_labels_distribution = [0] * 4
+    for idx in train_idx:
+        train_labels_distribution[labels[idx][0]] += 1
+    print(train_labels_distribution)
+    '''
+
+    # for i in range(len(val_idx)):
+    #     print("gt:", labels[i], "prediction:", np.argmax(val_output[i].data.numpy()))        
     print("Validation F1 micro:", f1_score(labels[val_idx], val_output.data.numpy().argmax(axis=1), average="micro"))
     print("Validation F1 macro:", f1_score(labels[val_idx], val_output.data.numpy().argmax(axis=1), average="macro"))
     print("Average batch time:", np.mean(times))
@@ -653,14 +655,8 @@ def load_cora(feature_dim, initializer="None"):
     if initializer == "1hot":
         num_feats = num_nodes
     feat_data = np.zeros((num_nodes, num_feats))
-    train_feat_data = np.zeros((train_size, num_feats))
-    test_feat_data = np.zeros((1000, num_feats))
-    val_feat_data = np.zeros((500, num_feats))
     labels = np.empty((num_nodes,1), dtype=np.int64)
-    train_labels = np.empty((train_size, 1), dtype=np.int64)
-    test_labels = np.empty((1000, 1), dtype=np.int64)
-    val_labels = np.empty((500, 1), dtype=np.int64)
-
+ 
     node_map = {}
     label_map = {}
     label_node_list_map = {}
@@ -731,16 +727,19 @@ def load_cora(feature_dim, initializer="None"):
             feat_data[k, :] = v
     elif initializer == "eigen_decomposition":
         try:
-            v = np.load("cora/cora_eigenvector.npy")
+            v = np.load("cora/cora_eigenvector_degree_normalized.npy")
             print(v.shape)
         except:
             adj_matrix = nx.to_numpy_array(G)
+            # normalize adjacency matrix with degree
+            sum_of_rows = adj_matrix.sum(axis=1)
+            normalized_adj_matrix = adj_matrix / sum_of_rows[:, None]
             print("start computing eigen vectors")
-            w, v = LA.eig(adj_matrix)
+            w, v = LA.eig(normalized_adj_matrix)
             indices = np.argsort(w)[::-1]
             v = v.transpose()[indices]
             # only save top 1000 eigenvectors
-            np.save("cora/cora_eigenvector", v[:2000])
+            np.save("cora/cora_eigenvector_degree_normalized", v[:2000])
         # print(v)
         feat_data = np.zeros((num_nodes, feature_dim))
         for i in range(num_nodes):
@@ -825,13 +824,7 @@ def load_pubmed(feature_dim, initializer):
     if initializer == "1hot":
         num_feats = num_nodes
     feat_data = np.zeros((num_nodes, num_feats))
-    train_feat_data = np.zeros((train_size, num_feats))
-    test_feat_data = np.zeros((1000, num_feats))
-    val_feat_data = np.zeros((500, num_feats))
     labels = np.empty((num_nodes,1), dtype=np.int64)
-    train_labels = np.empty((train_size, 1), dtype=np.int64)
-    test_labels = np.empty((1000, 1), dtype=np.int64)
-    val_labels = np.empty((500, 1), dtype=np.int64)
 
     node_map = {}
     label_map = {}
@@ -911,19 +904,22 @@ def load_pubmed(feature_dim, initializer):
             feat_data[k, :] = v
     elif initializer == "eigen_decomposition":
         try:
-            v = np.load("pubmed-data/pubmed_eigenvector.npy")
+            v = np.load("pubmed-data/pubmed_eigenvector_degree_normalized.npy")
             print(v.shape)
         except:
             adj_matrix = nx.to_numpy_array(G)
+            # normalize adjacency matrix with degree
+            sum_of_rows = adj_matrix.sum(axis=1)
+            normalized_adj_matrix = adj_matrix / sum_of_rows[:, None]
             print("start computing eigen vectors")
-            w, v = LA.eig(adj_matrix)
+            w, v = LA.eig(normalized_adj_matrix)
             indices = np.argsort(w)[::-1]
             v = v.transpose()[indices]
             # only save top 1000 eigenvectors
-            np.save("pubmed-data/pubmed_eigenvector", v[:1000])
-        print(v)
+            np.save("pubmed-data/pubmed_eigenvector_degree_normalized", v[:1000])
+        # print(v)
         feat_data = np.zeros((num_nodes, feature_dim))
-        assert(feature_dim <= 1000)
+        # assert(feature_dim <= 1000)
         for i in range(num_nodes):
             for j in range(feature_dim):
                 feat_data[i, j] = v[j, i]
@@ -997,8 +993,8 @@ def main():
                         help="random seed for initialization")
     parser.add_argument("--dataset", type=str, default="cora",
                         help="dataset used")
-    parser.add_argument("--classify", type=str, default="node",
-                        help="classify task")
+    parser.add_argument("--lr", type=float, default=0.1,
+                        help="learning rate")
 
     args = parser.parse_args()
 
@@ -1008,10 +1004,10 @@ def main():
     seed = args.seed
     epochs = args.epochs
     dataset = args.dataset
-    classify = args.classify
+    lr = args.lr
 
 
-    run_model(dataset, initializer, seed, epochs, classify=classify, feature_dim=feature_dim, identity_dim=identity_dim)
+    run_model(dataset, initializer, seed, epochs, feature_dim=feature_dim, identity_dim=identity_dim, lr=lr)
 
 if __name__ == "__main__":
     main()

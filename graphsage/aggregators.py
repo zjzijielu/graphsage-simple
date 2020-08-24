@@ -27,7 +27,7 @@ class MeanAggregator(nn.Module):
         self.features = features
         self.cuda = cuda
         self.gcn = gcn
-        if initializer in ["1hot", "node_degree"]:
+        if initializer in ["node_degree"]:
             self.embed = nn.Embedding(num_nodes, feature_dim)
 
         
@@ -67,14 +67,85 @@ class MeanAggregator(nn.Module):
         else:
             embed_matrix = self.features(torch.LongTensor(unique_nodes_list))
         # print embed_matrix
-        if initializer in ["1hot", "node_degree"]:
+        if initializer in ["node_degree"]:
+            indices = [np.where(a == 1)[0][0] for a in embed_matrix]
+            indices = torch.LongTensor(indices)
+            embed_matrix = self.embed(indices)
+        # print("embed matrix", embed_matrix.shape, "\n", embed_matrix)
+
+        to_feats = mask.mm(embed_matrix)
+        # print("mask", mask.shape, "\n", mask)
+        # print("to_feats", to_feats.shape, "\n", to_feats)
+        return to_feats
+
+
+class SumAggregator(nn.Module):
+    """
+    Quick hack
+    Aggregates a node's embeddings using sum of neighbors' embeddings
+    """
+    def __init__(self, features, initializer="None", cuda=False, gcn=False, feature_dim=100, num_nodes=100): 
+        """
+        Initializes the aggregator for a specific graph.
+
+        features -- function mapping LongTensor of node ids to FloatTensor of feature values.
+        cuda -- whether to use GPU
+        gcn --- whether to perform concatenation GraphSAGE-style, or add self-loops GCN-style
+        """
+
+        super(SumAggregator, self).__init__()
+
+        self.features = features
+        self.cuda = cuda
+        self.gcn = gcn
+        if initializer in ["node_degree"]:
+            self.embed = nn.Embedding(num_nodes, feature_dim)
+
+        
+    def forward(self, nodes, to_neighs, num_sample=10, initializer="None"):
+        """
+        nodes --- list of nodes in a batch
+        to_neighs --- list of sets, each set is the set of neighbors for node in batch
+        num_sample --- number of neighbors to sample. No sampling if None.
+        """
+        # Local pointers to functions (speed hack)
+        _set = set
+        if not num_sample is None:
+            _sample = random.sample
+            samp_neighs = [_set(_sample(to_neigh, 
+                            num_sample,
+                            )) if len(to_neigh) >= num_sample else to_neigh for to_neigh in to_neighs]
+        else:
+            samp_neighs = to_neighs
+
+        if self.gcn:
+            samp_neighs = [samp_neigh + set([nodes[i]]) for i, samp_neigh in enumerate(samp_neighs)]
+        unique_nodes_list = list(set.union(*samp_neighs))
+        unique_nodes = {n:i for i,n in enumerate(unique_nodes_list)}
+        mask = Variable(torch.zeros(len(samp_neighs), len(unique_nodes)))
+        column_indices = [unique_nodes[n] for samp_neigh in samp_neighs for n in samp_neigh]   
+        row_indices = [i for i in range(len(samp_neighs)) for j in range(len(samp_neighs[i]))]
+        mask[row_indices, column_indices] = 1
+        if self.cuda:
+            mask = mask.cuda()
+        num_neigh = mask.sum(1, keepdim=True)
+        # for i in range(mask.size(0)):
+        #     if num_neigh[i, 0] != 0:
+        #         mask[i] = mask[i].div(num_neigh[i])
+        # mask = mask.div(num_neigh)
+        if self.cuda:
+            embed_matrix = self.features(torch.LongTensor(unique_nodes_list).cuda())
+        else:
+            embed_matrix = self.features(torch.LongTensor(unique_nodes_list))
+        # print embed_matrix
+        if initializer in ["node_degree"]:
             indices = [np.where(a == 1)[0][0] for a in embed_matrix]
             indices = torch.LongTensor(indices)
             embed_matrix = self.embed(indices)
             # print embed_matrix.shape
-        print("embed matrix", embed_matrix.shape, "\n", embed_matrix)
+        # print("embed matrix", embed_matrix.shape, "\n", embed_matrix)
 
         to_feats = mask.mm(embed_matrix)
-        print("mask", mask.shape, "\n", mask)
-        print("to_feats", to_feats.shape, "\n", to_feats)
+        # print("mask", mask.shape, "\n", mask)
+        # print("to_feats", to_feats.shape, "\n", to_feats)
         return to_feats
